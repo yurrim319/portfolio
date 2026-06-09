@@ -1,11 +1,122 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import Base from '../layouts/Base.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+function lutThumbColor(b: number): string {
+  const t = b / 15;
+  const h = Math.round(215 - t * 130);
+  const s = Math.round(55 + t * 15);
+  const l1 = Math.round(6 + t * 18);
+  const l2 = Math.round(20 + t * 35);
+  return `linear-gradient(150deg, hsl(${h}deg ${s}% ${l1}%) 0%, hsl(${h - 15}deg ${s + 5}% ${l2}%) 100%)`;
+}
+const LUT_ROW_A = Array.from({ length: 16 }, (_, i) => lutThumbColor(i));
+const LUT_ROW_B = Array.from({ length: 16 }, (_, i) => lutThumbColor(15 - i));
 ---
+<Base title="yurim · dev">
+  <div class="site">
+    <nav>
+      <a class="logo" href="/">yurim<span>@dev</span> <span style="color:#e2e2e2">~</span></a>
+      <div class="nav-links">
+        <a href="/">works</a>
+        <a href="/about">about</a>
+      </div>
+    </nav>
 
-<Layout>
-	<Welcome />
-</Layout>
+    <div class="hero">
+      <div class="hero-eyebrow">// <span>rendering engineer</span> · technical artist</div>
+      <div class="hero-name">Rendering<br><strong>& Shader Work</strong></div>
+      <div class="hero-role">Unreal Engine · C++ · HLSL · RDG</div>
+      <div class="hero-desc">
+        언리얼 엔진 렌더러 내부를 직접 수정하고, 그 과정을 기록합니다.
+        엔진 소스 레벨의 RDG 파이프라인부터 커스텀 HLSL 셰이더까지.
+      </div>
+      <div class="stack">
+        <span class="stack-item hi">UE5.3</span>
+        <span class="stack-item hi">RDG</span>
+        <span class="stack-item hi">HLSL</span>
+        <span class="stack-item">Post Process</span>
+        <span class="stack-item">Compute Shader</span>
+        <span class="stack-item">GBuffer</span>
+      </div>
+    </div>
+
+    <div class="works">
+      <div class="works-header">
+        <div class="works-title">// works</div>
+        <div class="works-count">02 / --</div>
+      </div>
+      <a class="card" href="/works/lut-color-grading">
+        <div class="card-thumb">
+          <div class="lut-bg"></div>
+          <div class="lut-strip-thumb">
+            <div class="lut-row">
+              {LUT_ROW_A.map(bg => (
+                <div class="lut-row-tile" style={`background:${bg};`}></div>
+              ))}
+            </div>
+            <div class="lut-row">
+              {LUT_ROW_B.map(bg => (
+                <div class="lut-row-tile" style={`background:${bg};`}></div>
+              ))}
+            </div>
+          </div>
+          <div class="card-thumb-label">256x16_lut.png</div>
+        </div>
+        <div class="card-body">
+          <div class="card-meta">
+            <div class="card-type">renderer · material study</div>
+            <div class="card-date">2026.06</div>
+          </div>
+          <div class="card-title">LUT Color Grading</div>
+          <div class="card-desc">
+            256×16 PNG를 직접 제작해 UE5 PP Material로 Color Grading 재현.
+            텍스쳐 압축(DXT vs RGBA8), sRGB 공간, UV 매핑 공식까지
+            LUT 파이프라인 전 과정을 스터디.
+          </div>
+          <div class="card-chips">
+            <span class="chip">UE5</span>
+            <span class="chip">Post Process</span>
+            <span class="chip">LUT</span>
+            <span class="chip">Material</span>
+            <span class="chip">HLSL</span>
+          </div>
+          <div class="card-footer">
+            <span class="read-link">read_more →</span>
+            <div class="status"><span class="dot"></span>published</div>
+          </div>
+        </div>
+      </a>
+      <a class="card" href="/works/bloom-stencil-mask">
+        <div class="card-thumb">
+          <div class="bloom-bg"></div>
+          <div class="bloom-char"></div>
+          <div class="card-thumb-label">bloom_stencil_mask.usf</div>
+        </div>
+        <div class="card-body">
+          <div class="card-meta">
+            <div class="card-type">renderer · post process</div>
+            <div class="card-date">2026.05</div>
+          </div>
+          <div class="card-title">Bloom Stencil Masking</div>
+          <div class="card-desc">
+            UE5.3 커스텀 엔진 소스를 수정해 캐릭터에 Bloom이 발생하지 않도록
+            렌더러 레벨에서 마스킹. Standard / FFT Bloom 두 경로 모두 지원.
+            GBuffer 기반 소프트 마스크 + SDF 경계 처리.
+          </div>
+          <div class="card-chips">
+            <span class="chip">C++</span>
+            <span class="chip">HLSL</span>
+            <span class="chip">RDG</span>
+            <span class="chip">Compute Shader</span>
+            <span class="chip">SDF</span>
+            <span class="chip">GBuffer</span>
+          </div>
+          <div class="card-footer">
+            <span class="read-link">read_more →</span>
+            <div class="status"><span class="dot"></span>published</div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</Base>
