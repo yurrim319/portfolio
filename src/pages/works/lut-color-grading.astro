@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+const base = import.meta.env.BASE_URL;
 
 function lutTileColor(b: number): string {
   const t = b / 15;
@@ -14,14 +15,14 @@ const LUT_TILES = Array.from({ length: 16 }, (_, i) => lutTileColor(i));
 <Base title="LUT Color Grading — yurim · dev">
   <div class="site">
     <nav>
-      <a class="logo" href="/">yurim<span>@dev</span> <span style="color:#e2e2e2">~</span></a>
+      <a class="logo" href={base}>yurim<span>@dev</span> <span style="color:#e2e2e2">~</span></a>
       <div class="nav-links">
-        <a href="/">works</a>
-        <a href="/about">about</a>
+        <a href={base}>works</a>
+        <a href={`${base}about`}>about</a>
       </div>
     </nav>
 
-    <a class="back-link" href="/">← works</a>
+    <a class="back-link" href={base}>← works</a>
 
     <header class="article-header">
       <div class="article-meta">

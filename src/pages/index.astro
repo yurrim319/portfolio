@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL;
 
 function lutThumbColor(b: number): string {
   const t = b / 15;
@@ -15,10 +16,10 @@ const LUT_ROW_B = Array.from({ length: 16 }, (_, i) => lutThumbColor(15 - i));
 <Base title="yurim · dev">
   <div class="site">
     <nav>
-      <a class="logo" href="/">yurim<span>@dev</span> <span style="color:#e2e2e2">~</span></a>
+      <a class="logo" href={base}>yurim<span>@dev</span> <span style="color:#e2e2e2">~</span></a>
       <div class="nav-links">
-        <a href="/">works</a>
-        <a href="/about">about</a>
+        <a href={base}>works</a>
+        <a href={`${base}about`}>about</a>
       </div>
     </nav>
 
@@ -45,7 +46,7 @@ const LUT_ROW_B = Array.from({ length: 16 }, (_, i) => lutThumbColor(15 - i));
         <div class="works-title">// works</div>
         <div class="works-count">02 / --</div>
       </div>
-      <a class="card" href="/works/lut-color-grading">
+      <a class="card" href={`${base}works/lut-color-grading`}>
         <div class="card-thumb">
           <div class="lut-bg"></div>
           <div class="lut-strip-thumb">
@@ -86,7 +87,7 @@ const LUT_ROW_B = Array.from({ length: 16 }, (_, i) => lutThumbColor(15 - i));
           </div>
         </div>
       </a>
-      <a class="card" href="/works/bloom-stencil-mask">
+      <a class="card" href={`${base}works/bloom-stencil-mask`}>
         <div class="card-thumb">
           <div class="bloom-bg"></div>
           <div class="bloom-char"></div>
