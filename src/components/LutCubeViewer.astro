@@ -1,0 +1,464 @@
+---
+// LUT 3D Cube 인터랙티브 뷰어
+// 섹션별로 show prop으로 표시할 섹션 선택 가능
+// show: 'all' | 'cube' | 'slice' | 'compare'
+const { show = 'all' } = Astro.props;
+const showCube   = show === 'all' || show === 'cube';
+const showSlice  = show === 'all' || show === 'slice';
+const showCompare = show === 'all' || show === 'compare';
+---
+
+<div class="lut-viewer">
+
+  {showCube && (
+  <div class="lv-section">
+    <div class="lv-header">
+      <span class="lv-num">01</span>
+      <span class="lv-title">RGB 3D Cube 구조</span>
+    </div>
+    <p class="lv-desc">
+      LUT의 본질은 3D 큐브예요. 씬 컬러 하나(R, G, B)가 큐브 안의 한 점이고,
+      LUT는 그 점을 변환된 색상으로 바꿔주는 테이블입니다.
+      <strong>드래그로 회전</strong>하면서 꼭짓점 색상과 각 축의 의미를 확인하세요.
+    </p>
+    <div class="lv-box">
+      <div class="lv-canvas-wrap">
+        <canvas id="lv-c1" class="lv-canvas"></canvas>
+        <div class="lv-hint">드래그로 회전</div>
+      </div>
+      <div class="lv-callouts three">
+        <div class="lv-callout">
+          <div class="lv-cl-label">R 축 — X방향</div>
+          <div class="lv-cl-title lv-r">Red 채널</div>
+          <div class="lv-cl-body">오른쪽으로 갈수록 R↑<br>슬라이스 내 <b>U(가로) 좌표</b></div>
+        </div>
+        <div class="lv-callout">
+          <div class="lv-cl-label">G 축 — Y방향</div>
+          <div class="lv-cl-title lv-g">Green 채널</div>
+          <div class="lv-cl-body">위로 갈수록 G↑<br>슬라이스 내 <b>V(세로) 좌표</b></div>
+        </div>
+        <div class="lv-callout">
+          <div class="lv-cl-label">B 축 — Z방향</div>
+          <div class="lv-cl-title lv-b">Blue 채널</div>
+          <div class="lv-cl-body">앞뒤 방향 = <b>슬라이스 번호</b><br>UV 좌표가 아님 → 수동 보간 필요</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  )}
+
+  {showSlice && (
+  <div class="lv-section">
+    <div class="lv-header">
+      <span class="lv-num">02</span>
+      <span class="lv-title">B축 슬라이싱 → 256×16 스트립</span>
+    </div>
+    <p class="lv-desc">
+      UE5는 3D 큐브를 <b>B축 기준으로 16장</b>으로 잘라 가로로 이어붙입니다.
+      애니메이션이 슬라이스를 자동으로 분리/합체해요.
+      <b>B가 슬라이스 번호</b>라는 게 무엇인지, 왜 GPU가 B축을 자동 보간할 수 없는지 확인하세요.
+    </p>
+    <div class="lv-box">
+      <div class="lv-canvas-wrap">
+        <canvas id="lv-c2" class="lv-canvas"></canvas>
+        <div class="lv-hint">드래그로 회전 · 슬라이스 자동 분리/합체</div>
+      </div>
+      <div class="lv-callouts two">
+        <div class="lv-callout">
+          <div class="lv-cl-label">슬라이스 구조</div>
+          <div class="lv-cl-title">B값 → 슬라이스 번호</div>
+          <div class="lv-cl-body">
+            B=0 → 슬라이스 0 (가장 뒤)<br>
+            B=0.5 → 슬라이스 7~8 사이<br>
+            B=1 → 슬라이스 15 (가장 앞)<br><br>
+            각 슬라이스는 <span class="lv-r">R</span>×<span class="lv-g">G</span> 16×16 격자
+          </div>
+        </div>
+        <div class="lv-callout">
+          <div class="lv-cl-label">왜 B만 수동 보간인가</div>
+          <div class="lv-cl-title">슬라이스 사이 = 물리적 공백</div>
+          <div class="lv-cl-body">
+            GPU Bilinear는 하나의 슬라이스 <b>안에서만</b> 자동 보간해요.<br><br>
+            슬라이스는 텍스쳐 상에서 가로로 떨어진 별개 영역이라
+            슬라이스 경계를 넘는 보간은 직접 두 슬라이스를 샘플해서
+            <code>lerp(S0, S1, fb)</code>로 처리해야 해요.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  )}
+
+  {showCompare && (
+  <div class="lv-section">
+    <div class="lv-header">
+      <span class="lv-num">03</span>
+      <span class="lv-title">구버전 vs 신버전 샘플링 비교</span>
+    </div>
+    <p class="lv-desc">
+      씬 컬러 <span class="lv-r">R=0.9</span>, <span class="lv-g">G=0.1</span>, <span class="lv-b">B=0.3</span>을 LUT에서 찾는 경우예요.
+      아래 버튼으로 구버전/신버전 샘플 포인트를 켜고 끄면서
+      <span class="lv-y">★ 목표 위치</span>와 실제 샘플 위치의 차이를 비교하세요.
+    </p>
+    <div class="lv-box">
+      <div class="lv-canvas-wrap">
+        <canvas id="lv-c3" class="lv-canvas"></canvas>
+        <div class="lv-hint">드래그로 회전 · 아래 버튼으로 켜고 끄기</div>
+      </div>
+      <div class="lv-toggles">
+        <span class="lv-toggle-label">표시:</span>
+        <button class="lv-btn on lv-btn-red"  id="lv-btn-old">구버전 대각선 2점</button>
+        <button class="lv-btn on lv-btn-green" id="lv-btn-new">신버전 4점 Bilinear</button>
+        <button class="lv-btn on lv-btn-yellow" id="lv-btn-target">★ 목표점</button>
+        <button class="lv-btn on" id="lv-btn-blerp">B 보간선</button>
+      </div>
+      <div class="lv-callouts two">
+        <div class="lv-callout lv-callout-bad">
+          <div class="lv-cl-label">구버전 — 빨간 점 2개</div>
+          <div class="lv-cl-title lv-r">대각선 샘플의 문제</div>
+          <div class="lv-cl-body">
+            floor(R,G)와 ceil(R,G)를 <b>동시에</b> 적용하면
+            샘플이 <b>(R_floor, G_floor)</b>와 <b>(R_ceil, G_ceil)</b>이에요.<br><br>
+            R=0.9, G=0.1이면 목표는 <b>오른쪽 아래</b>인데
+            대각선은 <span class="lv-r">왼쪽아래→오른쪽위</span> 방향 → 오차 발생
+          </div>
+        </div>
+        <div class="lv-callout lv-callout-good">
+          <div class="lv-cl-label">신버전 — 초록 점 4개</div>
+          <div class="lv-cl-title lv-g">4점 Bilinear + B 수동 lerp</div>
+          <div class="lv-cl-body">
+            R, G 소수점 그대로 UV에 넘기면
+            GPU가 <b>4개 코너로 목표를 정확히 둘러쌉니다.</b><br><br>
+            B축만 수동 <code>lerp(S_floor, S_ceil, fb)</code>로 처리
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  )}
+
+</div>
+
+<style>
+  .lut-viewer { display: flex; flex-direction: column; gap: 3rem; margin: 2.5rem 0; }
+
+  .lv-section {}
+
+  .lv-header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.6rem; }
+  .lv-num { font-size: 0.7rem; font-family: 'IBM Plex Mono', monospace; color: #444; letter-spacing: 0.1em; }
+  .lv-title { font-size: 0.95rem; color: #bbb; font-weight: 600; }
+
+  .lv-desc { font-size: 0.84rem; color: #666; line-height: 1.75; margin-bottom: 1rem; }
+  .lv-desc b, .lv-desc strong { color: #999; font-weight: 600; }
+
+  .lv-box { background: #111; border: 1px solid #1e1e1e; border-radius: 10px; overflow: hidden; }
+
+  .lv-canvas-wrap { position: relative; }
+  .lv-canvas { display: block; width: 100%; cursor: grab; }
+  .lv-canvas:active { cursor: grabbing; }
+  .lv-hint {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.6); border: 1px solid #252525; border-radius: 20px;
+    padding: 4px 12px; font-size: 0.72rem; color: #4a4a4a; white-space: nowrap; pointer-events: none;
+  }
+
+  /* 콜아웃 그리드 */
+  .lv-callouts { display: grid; gap: 1px; background: #191919; border-top: 1px solid #191919; }
+  .lv-callouts.three { grid-template-columns: repeat(3, 1fr); }
+  .lv-callouts.two   { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 600px) {
+    .lv-callouts.three, .lv-callouts.two { grid-template-columns: 1fr; }
+  }
+
+  .lv-callout { background: #111; padding: 16px 18px; }
+  .lv-callout-bad  { border-top: 2px solid #3a1818; }
+  .lv-callout-good { border-top: 2px solid #183a20; }
+
+  .lv-cl-label { font-size: 0.68rem; font-family: 'IBM Plex Mono', monospace; color: #3a3a3a; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .lv-cl-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: #bbb; }
+  .lv-cl-body  { font-size: 0.8rem; color: #666; line-height: 1.7; }
+  .lv-cl-body b { color: #999; font-weight: 600; }
+  .lv-cl-body code { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: #888; }
+
+  /* 토글 버튼 */
+  .lv-toggles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px; border-top: 1px solid #191919; }
+  .lv-toggle-label { font-size: 0.74rem; color: #3a3a3a; margin-right: 2px; }
+  .lv-btn {
+    background: #171717; border: 1px solid #252525; border-radius: 5px;
+    color: #555; font-size: 0.74rem; padding: 4px 12px; cursor: pointer;
+    transition: all 0.12s; font-family: inherit;
+  }
+  .lv-btn:hover { border-color: #3a3a3a; color: #888; }
+  .lv-btn.on { background: #1e1e1e; border-color: #333; color: #aaa; }
+  .lv-btn-red.on    { border-color: #5a2020; color: #ff8080; background: #1a0e0e; }
+  .lv-btn-green.on  { border-color: #1a5a28; color: #60e878; background: #0c1a10; }
+  .lv-btn-yellow.on { border-color: #5a4a10; color: #f0c060; background: #1a1600; }
+
+  /* 컬러 유틸 */
+  .lv-r { color: #ff7070; }
+  .lv-g { color: #58e870; }
+  .lv-b { color: #6aabff; }
+  .lv-y { color: #f0c060; }
+</style>
+
+<script>
+// ─── 공통 수학 ───────────────────────────────────────────────
+function mulM(a,b){const r=new Array(16).fill(0);for(let i=0;i<4;i++)for(let j=0;j<4;j++)for(let k=0;k<4;k++)r[i*4+j]+=a[i*4+k]*b[k*4+j];return r;}
+function rotX(t){const c=Math.cos(t),s=Math.sin(t);return[1,0,0,0,0,c,-s,0,0,s,c,0,0,0,0,1];}
+function rotY(t){const c=Math.cos(t),s=Math.sin(t);return[c,0,s,0,0,1,0,0,-s,0,c,0,0,0,0,1];}
+function p3(v,m,cx,cy,sc){
+  const x=m[0]*v[0]+m[1]*v[1]+m[2]*v[2];
+  const y=m[4]*v[0]+m[5]*v[1]+m[6]*v[2];
+  const z=m[8]*v[0]+m[9]*v[1]+m[10]*v[2];
+  const d=4/(4+z*0.6);
+  return[cx+x*sc*d,cy-y*sc*d,z];
+}
+function initCanvas(id){
+  const el=document.getElementById(id);
+  if(!el)return null;
+  const dpr=window.devicePixelRatio||1;
+  const W=el.offsetWidth||800, H=parseInt(el.getAttribute('data-h')||'420');
+  el.width=W*dpr; el.height=H*dpr;
+  el.style.width=W+'px'; el.style.height=H+'px';
+  const ctx=el.getContext('2d'); ctx.scale(dpr,dpr);
+  return{el,ctx,W,H,cx:W/2,cy:H/2};
+}
+function makeDrag(el,cb){
+  let dn=false,lx=0,ly=0;
+  el.addEventListener('mousedown',e=>{dn=true;lx=e.clientX;ly=e.clientY;});
+  window.addEventListener('mouseup',()=>dn=false);
+  window.addEventListener('mousemove',e=>{if(!dn)return;cb(e.clientX-lx,e.clientY-ly);lx=e.clientX;ly=e.clientY;});
+  el.addEventListener('touchstart',e=>{dn=true;lx=e.touches[0].clientX;ly=e.touches[0].clientY;e.preventDefault();},{passive:false});
+  el.addEventListener('touchend',()=>dn=false);
+  el.addEventListener('touchmove',e=>{if(!dn)return;cb(e.touches[0].clientX-lx,e.touches[0].clientY-ly);lx=e.touches[0].clientX;ly=e.touches[0].clientY;e.preventDefault();},{passive:false});
+}
+function arrowCtx(ctx,f,t,color,lw=2){
+  const dx=t[0]-f[0],dy=t[1]-f[1],len=Math.hypot(dx,dy);if(len<2)return;
+  const ux=dx/len,uy=dy/len,hs=9;
+  ctx.beginPath();ctx.moveTo(f[0],f[1]);ctx.lineTo(t[0],t[1]);ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(t[0],t[1]);ctx.lineTo(t[0]-ux*hs-uy*hs*.5,t[1]-uy*hs+ux*hs*.5);ctx.lineTo(t[0]-ux*hs+uy*hs*.5,t[1]-uy*hs-ux*hs*.5);ctx.closePath();ctx.fillStyle=color;ctx.fill();
+}
+
+// ─── Canvas 1: RGB Cube ─────────────────────────────────────
+(function(){
+  const c=initCanvas('lv-c1');if(!c)return;
+  const{ctx,W,H,cx,cy}=c;
+  const SC=Math.min(W,H)*0.36;
+  let rx=0.38,ry=0.58;
+  const M=()=>mulM(rotX(rx),rotY(ry));
+  const P=(v)=>p3(v,M(),cx,cy,SC);
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const m=M(),N=7,pts=[];
+    for(let ri=0;ri<=N;ri++)for(let gi=0;gi<=N;gi++)for(let bi=0;bi<=N;bi++){
+      if(ri>0&&ri<N&&gi>0&&gi<N&&bi>0&&bi<N)continue;
+      const rv=ri/N,gv=gi/N,bv=bi/N;
+      const pp=p3([rv-.5,gv-.5,bv-.5],m,cx,cy,SC);
+      pts.push({pp,rv,gv,bv,z:pp[2]});
+    }
+    pts.sort((a,b)=>a.z-b.z);
+    for(const pt of pts){
+      const a=Math.min(1,Math.max(0.1,0.3+pt.z*.55));
+      const isCorner=(pt.rv===0||pt.rv===1)&&(pt.gv===0||pt.gv===1)&&(pt.bv===0||pt.bv===1);
+      ctx.beginPath();ctx.arc(pt.pp[0],pt.pp[1],isCorner?6:3,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${Math.round(pt.rv*255)},${Math.round(pt.gv*255)},${Math.round(pt.bv*255)},${a})`;ctx.fill();
+    }
+    // 코너 라벨
+    const labels=[
+      {v:[.5,-.5,-.5],t:'R',c:'#ff6060'},{v:[-.5,.5,-.5],t:'G',c:'#50e870'},
+      {v:[-.5,-.5,.5],t:'B',c:'#5080ff'},{v:[.5,.5,.5],t:'White',c:'#ccc'},{v:[-.5,-.5,-.5],t:'Black',c:'#555'},
+    ];
+    for(const l of labels){const pp=p3(l.v,m,cx,cy,SC);ctx.font='bold 11px IBM Plex Mono,monospace';ctx.fillStyle=l.c;ctx.fillText(l.t,pp[0]+7,pp[1]+4);}
+    // 축
+    const O=P([-.5,-.5,-.5]),AR=P([.75,-.5,-.5]),AG=P([-.5,.75,-.5]),AB=P([-.5,-.5,.75]);
+    arrowCtx(ctx,O,AR,'#ff5555',2.5);arrowCtx(ctx,O,AG,'#44ee66',2.5);arrowCtx(ctx,O,AB,'#4488ff',2.5);
+    ctx.font='bold 12px IBM Plex Sans,sans-serif';
+    ctx.fillStyle='#ff7070';ctx.fillText('R  (U축)',AR[0]+6,AR[1]+4);
+    ctx.fillStyle='#55ff77';ctx.fillText('G  (V축)',AG[0]+6,AG[1]+4);
+    ctx.fillStyle='#6699ff';ctx.fillText('B  (슬라이스 번호)',AB[0]+6,AB[1]+4);
+  }
+  el: c.el;
+  // height 설정
+  c.el.style.height='420px';
+  draw();
+  makeDrag(c.el,(dx,dy)=>{ry+=dx*.01;rx+=dy*.01;draw();});
+})();
+
+// ─── Canvas 2: 슬라이싱 애니메이션 ─────────────────────────
+(function(){
+  const c=initCanvas('lv-c2');if(!c)return;
+  const{ctx,W,H,cx,cy}=c;
+  const SC=Math.min(W,H)*0.3;
+  let rx=0.28,ry=0.62,t=0;
+  const M=()=>mulM(rotX(rx),rotY(ry));
+  const SLICES=8;
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const m=M();
+    const spread=Math.sin(t*.008)*.5+.5;
+    const slices=[];
+    for(let si=0;si<SLICES;si++){
+      const bv=si/(SLICES-1);
+      const nz=-0.5+bv, ez=-0.5+bv+(si-(SLICES-1)/2)*spread*.28;
+      const bz=nz+(ez-nz)*spread;
+      const N=5,pts=[];
+      for(let ri=0;ri<=N;ri++)for(let gi=0;gi<=N;gi++){
+        const rv=ri/N,gv=gi/N;
+        const pp=p3([rv-.5,gv-.5,bz],m,cx,cy,SC);
+        pts.push({pp,rv,gv,bv,bz,z:pp[2]});
+      }
+      slices.push({pts,bv,bz,si,avgZ:pts.reduce((s,p)=>s+p.z,0)/pts.length});
+    }
+    slices.sort((a,b)=>a.avgZ-b.avgZ);
+
+    for(const sl of slices){
+      const c00=p3([-.5,-.5,sl.bz],m,cx,cy,SC),c10=p3([.5,-.5,sl.bz],m,cx,cy,SC);
+      const c11=p3([.5,.5,sl.bz],m,cx,cy,SC),c01=p3([-.5,.5,sl.bz],m,cx,cy,SC);
+      ctx.beginPath();ctx.moveTo(c00[0],c00[1]);ctx.lineTo(c10[0],c10[1]);ctx.lineTo(c11[0],c11[1]);ctx.lineTo(c01[0],c01[1]);ctx.closePath();
+      ctx.fillStyle=`rgba(${Math.round(sl.bv*35)},${Math.round(sl.bv*25)},${Math.round(sl.bv*180)},.08)`;ctx.fill();
+      ctx.strokeStyle=`rgba(80,90,${Math.round(150+sl.bv*100)},${.12+spread*.2})`;ctx.lineWidth=1;ctx.stroke();
+      const sortPts=[...sl.pts].sort((a,b)=>a.z-b.z);
+      for(const pt of sortPts){
+        const a=Math.min(.95,Math.max(.15,.35+pt.z*.45));
+        ctx.beginPath();ctx.arc(pt.pp[0],pt.pp[1],2.8,0,Math.PI*2);
+        ctx.fillStyle=`rgba(${Math.round(pt.rv*255)},${Math.round(pt.gv*255)},${Math.round(pt.bv*255)},${a})`;ctx.fill();
+      }
+      if(spread>.4){
+        const a=Math.min(1,(spread-.4)*3);
+        const lp=p3([.5,.5,sl.bz],m,cx,cy,SC);
+        ctx.font='11px IBM Plex Mono,monospace';ctx.fillStyle=`rgba(150,170,255,${a*.8})`;
+        ctx.fillText(`B=${sl.si}`,lp[0]+6,lp[1]-3);
+      }
+      if(sl.si<SLICES-1&&spread>.3){
+        const next=slices.find(s=>s.si===sl.si+1);
+        if(next){
+          const mp=p3([0,0,sl.bz],m,cx,cy,SC),np=p3([0,0,next.bz],m,cx,cy,SC);
+          const a=Math.min(1,(spread-.3)*2.5)*.4;
+          ctx.beginPath();ctx.moveTo(mp[0],mp[1]);ctx.lineTo(np[0],np[1]);
+          ctx.strokeStyle=`rgba(240,192,96,${a})`;ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+        }
+      }
+    }
+    const stA=Math.min(1,spread*3);
+    if(stA>.1){ctx.font='11px IBM Plex Sans,sans-serif';ctx.fillStyle=`rgba(100,150,255,${stA*.65})`;ctx.fillText('슬라이스 분리 중 — B값마다 별도 면',cx-105,H-18);}
+    const O=p3([-.5,-.5,-.5],m,cx,cy,SC),AR=p3([.7,-.5,-.5],m,cx,cy,SC),AG=p3([-.5,.7,-.5],m,cx,cy,SC),AB=p3([-.5,-.5,.7],m,cx,cy,SC);
+    arrowCtx(ctx,O,AR,'#ff5555',2);arrowCtx(ctx,O,AG,'#44ee66',2);arrowCtx(ctx,O,AB,'#4488ff',2);
+    ctx.font='bold 11px IBM Plex Sans,sans-serif';
+    ctx.fillStyle='#ff7070';ctx.fillText('R',AR[0]+5,AR[1]+4);
+    ctx.fillStyle='#55ff77';ctx.fillText('G',AG[0]+5,AG[1]+4);
+    ctx.fillStyle='#6699ff';ctx.fillText('B (슬라이스)',AB[0]+5,AB[1]+4);
+  }
+  c.el.style.height='460px';
+  let af;function loop(){t++;draw();af=requestAnimationFrame(loop);}loop();
+  makeDrag(c.el,(dx,dy)=>{ry+=dx*.01;rx+=dy*.01;});
+})();
+
+// ─── Canvas 3: 보간 비교 ────────────────────────────────────
+(function(){
+  const c=initCanvas('lv-c3');if(!c)return;
+  const{ctx,W,H,cx,cy}=c;
+  const SC=Math.min(W,H)*0.31;
+  let rx=0.28,ry=0.52;
+  let showOld=true,showNew=true,showTarget=true,showBlerp=true;
+  const M=()=>mulM(rotX(rx),rotY(ry));
+  const RV=0.9,GV=0.1,BV=0.3;
+  const GN=4;
+  const rf=Math.floor(RV*GN)/GN,rc=Math.min(1,Math.ceil(RV*GN)/GN);
+  const gf=Math.floor(GV*GN)/GN,gc=Math.min(1,Math.ceil(GV*GN)/GN);
+  const BN=4;
+  const bf=Math.floor(BV*BN)/BN,bc=Math.min(1,Math.ceil(BV*BN)/BN);
+  const fb=(BV-bf)/(bc-bf||1);
+
+  function drawSlice(m,bz,alpha,lbl){
+    const c00=p3([-.5,-.5,bz-.5],m,cx,cy,SC),c10=p3([.5,-.5,bz-.5],m,cx,cy,SC);
+    const c11=p3([.5,.5,bz-.5],m,cx,cy,SC),c01=p3([-.5,.5,bz-.5],m,cx,cy,SC);
+    ctx.beginPath();ctx.moveTo(c00[0],c00[1]);ctx.lineTo(c10[0],c10[1]);ctx.lineTo(c11[0],c11[1]);ctx.lineTo(c01[0],c01[1]);ctx.closePath();
+    ctx.fillStyle=`rgba(18,22,45,${alpha*.9})`;ctx.fill();
+    ctx.strokeStyle=`rgba(55,65,140,${alpha*.65})`;ctx.lineWidth=1;ctx.stroke();
+    const N=GN,pts=[];
+    for(let ri=0;ri<=N;ri++)for(let gi=0;gi<=N;gi++){const rv=ri/N,gv=gi/N;const pp=p3([rv-.5,gv-.5,bz-.5],m,cx,cy,SC);pts.push({pp,rv,gv,z:pp[2]});}
+    pts.sort((a,b)=>a.z-b.z);
+    for(const pt of pts){ctx.beginPath();ctx.arc(pt.pp[0],pt.pp[1],2,0,Math.PI*2);ctx.fillStyle=`rgba(80,100,200,${alpha*.55})`;ctx.fill();}
+    const lp=p3([.5,.5,bz-.5],m,cx,cy,SC);
+    ctx.font='bold 10px IBM Plex Mono,monospace';ctx.fillStyle=`rgba(140,160,255,${alpha*.9})`;ctx.fillText(lbl,lp[0]+7,lp[1]-3);
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const m=M();
+    const pF=p3([0,0,bf-.5],m,cx,cy,SC),pC=p3([0,0,bc-.5],m,cx,cy,SC);
+    if(pF[2]>pC[2]){drawSlice(m,bc,.6,`B_ceil (${bc.toFixed(2)})`);drawSlice(m,bf,1,`B_floor (${bf.toFixed(2)})`);}
+    else{drawSlice(m,bf,.6,`B_floor (${bf.toFixed(2)})`);drawSlice(m,bc,1,`B_ceil (${bc.toFixed(2)})`);}
+
+    if(showOld){
+      for(const bz of[bf,bc]){
+        const p1=p3([rf-.5,gf-.5,bz-.5],m,cx,cy,SC),p2=p3([rc-.5,gc-.5,bz-.5],m,cx,cy,SC);
+        ctx.beginPath();ctx.moveTo(p1[0],p1[1]);ctx.lineTo(p2[0],p2[1]);
+        ctx.strokeStyle='rgba(255,70,70,.5)';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);ctx.stroke();ctx.setLineDash([]);
+        for(const pp of[p1,p2]){
+          ctx.beginPath();ctx.arc(pp[0],pp[1],7,0,Math.PI*2);ctx.fillStyle='rgba(255,80,80,.12)';ctx.fill();
+          ctx.beginPath();ctx.arc(pp[0],pp[1],4.5,0,Math.PI*2);ctx.fillStyle='#ff5050';ctx.fill();
+          ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1;ctx.stroke();
+        }
+        const mid=[(p1[0]+p2[0])/2,(p1[1]+p2[1])/2];
+        ctx.font='10px IBM Plex Sans,sans-serif';ctx.fillStyle='rgba(255,110,110,.7)';ctx.fillText('대각선',mid[0]+5,mid[1]-4);
+      }
+    }
+    if(showNew){
+      for(const bz of[bf,bc]){
+        const pts4=[p3([rf-.5,gf-.5,bz-.5],m,cx,cy,SC),p3([rc-.5,gf-.5,bz-.5],m,cx,cy,SC),p3([rc-.5,gc-.5,bz-.5],m,cx,cy,SC),p3([rf-.5,gc-.5,bz-.5],m,cx,cy,SC)];
+        ctx.beginPath();ctx.moveTo(pts4[0][0],pts4[0][1]);pts4.slice(1).forEach(pp=>ctx.lineTo(pp[0],pp[1]));ctx.closePath();
+        ctx.fillStyle='rgba(50,200,80,.06)';ctx.fill();
+        ctx.strokeStyle='rgba(50,230,90,.5)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+        for(const pp of pts4){
+          ctx.beginPath();ctx.arc(pp[0],pp[1],6,0,Math.PI*2);ctx.fillStyle='rgba(50,230,90,.13)';ctx.fill();
+          ctx.beginPath();ctx.arc(pp[0],pp[1],4,0,Math.PI*2);ctx.fillStyle='#30e860';ctx.fill();
+          ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.stroke();
+        }
+      }
+    }
+    const tF=p3([RV-.5,GV-.5,bf-.5],m,cx,cy,SC),tC=p3([RV-.5,GV-.5,bc-.5],m,cx,cy,SC);
+    const tx=tF[0]+(tC[0]-tF[0])*fb,ty=tF[1]+(tC[1]-tF[1])*fb;
+    if(showBlerp){
+      ctx.beginPath();ctx.moveTo(tF[0],tF[1]);ctx.lineTo(tC[0],tC[1]);
+      ctx.strokeStyle='rgba(240,192,96,.6)';ctx.lineWidth=2;ctx.setLineDash([5,3]);ctx.stroke();ctx.setLineDash([]);
+      for(const pp of[tF,tC]){ctx.beginPath();ctx.arc(pp[0],pp[1],3,0,Math.PI*2);ctx.fillStyle='rgba(240,192,96,.65)';ctx.fill();}
+      ctx.font='10px IBM Plex Mono,monospace';ctx.fillStyle='rgba(240,192,96,.65)';
+      ctx.fillText(`fb=${fb.toFixed(2)}`,(tF[0]+tC[0])/2+7,(tF[1]+tC[1])/2-5);
+    }
+    if(showTarget){
+      ctx.beginPath();ctx.arc(tx,ty,16,0,Math.PI*2);ctx.fillStyle='rgba(240,192,96,.07)';ctx.fill();
+      ctx.beginPath();ctx.arc(tx,ty,9,0,Math.PI*2);ctx.fillStyle='rgba(240,192,96,.15)';ctx.fill();
+      ctx.beginPath();ctx.arc(tx,ty,5,0,Math.PI*2);ctx.fillStyle='#f0c060';ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.font='bold 12px IBM Plex Sans,sans-serif';ctx.fillStyle='#f0c060';
+      ctx.fillText(`★ 목표  R=${RV} G=${GV} B=${BV}`,tx+12,ty+4);
+    }
+    const O=p3([-.5,-.5,-.5],m,cx,cy,SC),AR=p3([.72,-.5,-.5],m,cx,cy,SC),AG=p3([-.5,.72,-.5],m,cx,cy,SC),AB=p3([-.5,-.5,.72],m,cx,cy,SC);
+    arrowCtx(ctx,O,AR,'#ff5555',2);arrowCtx(ctx,O,AG,'#44ee66',2);arrowCtx(ctx,O,AB,'#4488ff',2);
+    ctx.font='bold 11px IBM Plex Sans,sans-serif';
+    ctx.fillStyle='#ff7070';ctx.fillText('R',AR[0]+5,AR[1]+4);
+    ctx.fillStyle='#55ff77';ctx.fillText('G',AG[0]+5,AG[1]+4);
+    ctx.fillStyle='#6699ff';ctx.fillText('B',AB[0]+5,AB[1]+4);
+  }
+  c.el.style.height='480px';
+  draw();
+  makeDrag(c.el,(dx,dy)=>{ry+=dx*.01;rx+=dy*.01;draw();});
+
+  // 토글
+  function setupBtn(id,get,set,cls){
+    const btn=document.getElementById(id);if(!btn)return;
+    btn.addEventListener('click',()=>{
+      set(!get());btn.classList.toggle('on');
+      if(cls){btn.classList.toggle(cls);}
+      draw();
+    });
+  }
+  setupBtn('lv-btn-old',()=>showOld,v=>showOld=v,'lv-btn-red');
+  setupBtn('lv-btn-new',()=>showNew,v=>showNew=v,'lv-btn-green');
+  setupBtn('lv-btn-target',()=>showTarget,v=>showTarget=v,'lv-btn-yellow');
+  setupBtn('lv-btn-blerp',()=>showBlerp,v=>showBlerp=v,null);
+})();
+</script>

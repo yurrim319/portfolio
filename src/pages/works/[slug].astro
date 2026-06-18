@@ -1,0 +1,167 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  const works = await getCollection('works');
+  return works.map(entry => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const base = import.meta.env.BASE_URL;
+
+const { title, subtitle, type, date, chips } = entry.data;
+
+function lutTileColor(b: number): string {
+  const t = b / 15;
+  const h = Math.round(215 - t * 130);
+  const s = Math.round(55 + t * 15);
+  const l1 = Math.round(6 + t * 18);
+  const l2 = Math.round(20 + t * 35);
+  return `linear-gradient(150deg, hsl(${h}deg ${s}% ${l1}%) 0%, hsl(${h - 15}deg ${s + 5}% ${l2}%) 100%)`;
+}
+const LUT_TILES = Array.from({ length: 16 }, (_, i) => lutTileColor(i));
+---
+
+<Base title={`${title} — yurim · dev`}>
+  <div class="site">
+    <nav>
+      <a class="logo" href={base}>yurim<span>@dev</span> <span style="color:#e2e2e2">~</span></a>
+      <div class="nav-links">
+        <a href={base}>works</a>
+        <a href={`${base}about`}>about</a>
+      </div>
+    </nav>
+
+    <a class="back-link" href={base}>← works</a>
+
+    <header class="article-header">
+      <div class="article-meta">
+        {type && <span class="article-type">{type}</span>}
+        {date && <span class="article-date">{date}</span>}
+      </div>
+      <h1 class="article-title" set:html={title.replace(/(\w+)$/, '<strong>$1</strong>')} />
+      {subtitle && <p class="article-sub">{subtitle}</p>}
+      {chips && (
+        <div class="article-chips">
+          {chips.map(chip => (
+            <span class={`chip${chip.highlight ? ' hi' : ''}`}>{chip.label}</span>
+          ))}
+        </div>
+      )}
+    </header>
+
+    <div class="mdx-content">
+      <Content lutTiles={LUT_TILES} />
+    </div>
+
+    <div style="height:4rem;"></div>
+  </div>
+</Base>
+
+<style>
+  /* MDX 렌더링된 콘텐츠 스타일 */
+  .mdx-content :global(h2) {
+    font-size: 1.15rem;
+    color: #ccc;
+    font-weight: 600;
+    margin: 3rem 0 0.75rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid #1a1a1a;
+  }
+  .mdx-content :global(h2:first-child) {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+  }
+  .mdx-content :global(p) {
+    font-size: 0.92rem;
+    color: #888;
+    line-height: 1.85;
+    margin-bottom: 1rem;
+    max-width: 680px;
+  }
+  .mdx-content :global(strong) {
+    color: #bbb;
+    font-weight: 600;
+  }
+  .mdx-content :global(hr) {
+    border: none;
+    border-top: 1px solid #1a1a1a;
+    margin: 3rem 0;
+  }
+  /* 코드 블록 */
+  .mdx-content :global(pre) {
+    background: #0e0e0e;
+    border: 1px solid #1e1e1e;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    margin: 1.25rem 0;
+  }
+  .mdx-content :global(pre code) {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: #bbb;
+    line-height: 1.7;
+    background: none;
+    padding: 0;
+  }
+  .mdx-content :global(:not(pre) > code) {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: #aaa;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 3px;
+    padding: 1px 6px;
+  }
+  /* 테이블 */
+  .mdx-content :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+    margin: 1.25rem 0;
+  }
+  .mdx-content :global(th) {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    color: #666;
+    font-weight: 500;
+    border-bottom: 1px solid #222;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+  }
+  .mdx-content :global(td) {
+    padding: 0.6rem 0.9rem;
+    color: #888;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .mdx-content :global(tr:last-child td) {
+    border-bottom: none;
+  }
+  /* 리스트 */
+  .mdx-content :global(ul) {
+    padding-left: 1.25rem;
+    margin: 0.75rem 0 1rem;
+  }
+  .mdx-content :global(li) {
+    font-size: 0.88rem;
+    color: #888;
+    line-height: 1.8;
+    margin-bottom: 0.25rem;
+  }
+  .mdx-content :global(li code) {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    color: #aaa;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+</style>

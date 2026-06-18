@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>LUT 보간 설명</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f0f; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 40px; line-height: 1.7; }
+  h1 { font-size: 1.4rem; color: #fff; margin-bottom: 8px; }
+  h2 { font-size: 1.1rem; color: #aaa; margin: 40px 0 16px; border-left: 3px solid #555; padding-left: 12px; }
+  p { color: #bbb; margin-bottom: 12px; font-size: 0.95rem; }
+  .highlight { color: #f0c060; font-weight: bold; }
+  .red { color: #ff6b6b; font-weight: bold; }
+  .green { color: #6bff8a; font-weight: bold; }
+  .blue { color: #6baeff; font-weight: bold; }
+
+  .section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 28px; margin-bottom: 32px; }
+
+  /* Grid */
+  .grid-wrap { display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; }
+  .grid-container { position: relative; }
+  .axis-label { font-size: 0.78rem; color: #888; }
+
+  svg text { font-family: 'Segoe UI', sans-serif; }
+
+  .code { background: #111; border: 1px solid #333; border-radius: 6px; padding: 14px 18px; font-family: 'Consolas', monospace; font-size: 0.85rem; color: #ccc; margin: 12px 0; white-space: pre; overflow-x: auto; }
+  .code .r { color: #ff8080; }
+  .code .g { color: #80ff99; }
+  .code .b { color: #80b8ff; }
+  .code .comment { color: #555; }
+
+  .tag { display: inline-block; background: #2a2a2a; border-radius: 4px; padding: 2px 8px; font-size: 0.8rem; margin: 2px; }
+
+  .step { display: flex; align-items: flex-start; gap: 16px; margin: 16px 0; }
+  .step-num { background: #333; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0; margin-top: 2px; }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .compare-box { background: #111; border-radius: 8px; padding: 18px; }
+  .compare-box.bad { border: 1px solid #5a2020; }
+  .compare-box.good { border: 1px solid #205a30; }
+  .compare-title { font-size: 0.85rem; font-weight: bold; margin-bottom: 12px; }
+  .compare-title.bad { color: #ff6b6b; }
+  .compare-title.good { color: #6bff8a; }
+</style>
+</head>
+<body>
+
+<h1>LUT 보간 — 왜 R/G 기준값이 같아야 하는가</h1>
+<p style="color:#666; font-size:0.85rem;">구버전 vs 신버전 코드의 차이를 그림으로 이해하기</p>
+
+<!-- SECTION 1 -->
+<div class="section">
+  <h2>전제 — 지금 보간하려는 씬 컬러</h2>
+  <p>씬 컬러가 <span class="red">R=0.9</span>, <span class="green">G=0.1</span>, <span class="blue">B=0.3</span> 이라고 가정합니다.</p>
+  <div class="code"><span class="r">r15</span> = 0.9 × 15 = <span class="r">13.5</span>   <span class="comment">→ floor=13, ceil=14, frac=0.5</span>
+<span class="g">g15</span> = 0.1 × 15 = <span class="g">1.5</span>    <span class="comment">→ floor=1,  ceil=2,  frac=0.5</span>
+<span class="b">b15</span> = 0.3 × 15 = <span class="b">4.5</span>    <span class="comment">→ floor=4,  ceil=5,  frac=0.5</span></div>
+  <p>실제로 LUT에서 찾아야 할 위치는 슬라이스4와 슬라이스5 사이의 <span class="red">R=13.5</span>, <span class="green">G=1.5</span> 지점입니다.<br>
+  이 지점을 정확히 보간하려면 <strong>그 주변 4개 코너 픽셀</strong>이 모두 필요해요.</p>
+</div>
+
+<!-- SECTION 2 -->
+<div class="section">
+  <h2>정확한 Bilinear — 4개 코너가 필요한 이유</h2>
+  <p>아래 격자에서 ★ 위치(R=13.5, G=1.5)를 구하려면 주변 4점이 있어야 해요.</p>
+
+  <div class="grid-wrap">
+    <div>
+      <svg width="320" height="280">
+        <!-- grid lines -->
+        <line x1="60" y1="40" x2="60" y2="220" stroke="#333" stroke-width="1"/>
+        <line x1="140" y1="40" x2="140" y2="220" stroke="#333" stroke-width="1"/>
+        <line x1="220" y1="40" x2="220" y2="220" stroke="#333" stroke-width="1"/>
+        <line x1="300" y1="40" x2="300" y2="220" stroke="#333" stroke-width="1"/>
+        <line x1="60" y1="40" x2="300" y2="40" stroke="#333" stroke-width="1"/>
+        <line x1="60" y1="120" x2="300" y2="120" stroke="#333" stroke-width="1"/>
+        <line x1="60" y1="200" x2="300" y2="200" stroke="#333" stroke-width="1"/>
+        <line x1="60" y1="220" x2="300" y2="220" stroke="#333" stroke-width="1"/>
+
+        <!-- axis -->
+        <line x1="40" y1="220" x2="305" y2="220" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <line x1="40" y1="220" x2="40" y2="35" stroke="#555" stroke-width="1.5" marker-end="url(#arrow)"/>
+        <defs>
+          <marker id="arrow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#555"/>
+          </marker>
+        </defs>
+
+        <!-- axis labels -->
+        <text x="310" y="224" fill="#888" font-size="12">R</text>
+        <text x="28" y="30" fill="#888" font-size="12">G</text>
+        <text x="55" y="236" fill="#888" font-size="11">13</text>
+        <text x="135" y="236" fill="#888" font-size="11">13.5</text>
+        <text x="215" y="236" fill="#888" font-size="11">14</text>
+        <text x="28" y="204" fill="#888" font-size="11">1</text>
+        <text x="28" y="124" fill="#888" font-size="11">1.5</text>
+        <text x="28" y="44" fill="#888" font-size="11">2</text>
+
+        <!-- 4 corners highlight -->
+        <rect x="61" y="121" width="79" height="79" fill="#1a3a1a" opacity="0.6"/>
+
+        <!-- 4 corner points -->
+        <circle cx="60" cy="200" r="7" fill="#6bff8a"/>
+        <text x="64" y="215" fill="#6bff8a" font-size="10">좌하(13,1)</text>
+
+        <circle cx="220" cy="200" r="7" fill="#6bff8a"/>
+        <text x="224" y="215" fill="#6bff8a" font-size="10">우하(14,1)</text>
+
+        <circle cx="60" cy="40" r="7" fill="#6bff8a"/>
+        <text x="64" y="36" fill="#6bff8a" font-size="10">좌상(13,2)</text>
+
+        <circle cx="220" cy="40" r="7" fill="#6bff8a"/>
+        <text x="224" y="36" fill="#6bff8a" font-size="10">우상(14,2)</text>
+
+        <!-- target point -->
+        <circle cx="140" cy="120" r="9" fill="#f0c060" stroke="#fff" stroke-width="1.5"/>
+        <text x="148" y="116" fill="#f0c060" font-size="11" font-weight="bold">★ 목표(13.5, 1.5)</text>
+
+        <!-- interpolation lines -->
+        <line x1="60" y1="200" x2="220" y2="200" stroke="#6bff8a" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="60" y1="40" x2="220" y2="40" stroke="#6bff8a" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="140" y1="200" x2="140" y2="40" stroke="#f0c060" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- step labels -->
+        <text x="70" y="218" fill="#aaa" font-size="9">① R로 좌우 보간</text>
+        <text x="148" y="140" fill="#aaa" font-size="9">② G로 상하 보간</text>
+      </svg>
+    </div>
+
+    <div style="max-width:260px; padding-top:20px;">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div><span class="red">R=13.5</span> 기준으로 하단 두 점 보간<br><span style="font-size:0.82rem;color:#777">lerp(좌하, 우하, 0.5) → 하단 중간값</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div><span class="red">R=13.5</span> 기준으로 상단 두 점 보간<br><span style="font-size:0.82rem;color:#777">lerp(좌상, 우상, 0.5) → 상단 중간값</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div><span class="green">G=1.5</span> 기준으로 위 두 결과 보간<br><span style="font-size:0.82rem;color:#777">lerp(하단중간, 상단중간, 0.5) → ★</span></div>
+      </div>
+      <p style="margin-top:16px; font-size:0.85rem; color:#888;">R과 G가 <strong>독립적으로</strong> 각자의 축에서 보간돼요. 4점이 목표를 정확히 둘러싸고 있어요.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3 -->
+<div class="section">
+  <h2>구버전의 문제 — 대각선 2점</h2>
+  <p>구버전은 R과 G를 <strong>동시에</strong> floor/ceil 했어요. 그러면 샘플 포인트가 어떻게 되는지 보세요.</p>
+
+  <div class="compare">
+    <div class="compare-box bad">
+      <div class="compare-title bad">구버전 코드</div>
+      <div class="code" style="font-size:0.78rem; padding:10px;">U_floor = B_off + <span class="r">floor(r15)</span>  <span class="comment">← R=13</span>
+V_floor = <span class="g">floor(g15)</span>         <span class="comment">← G=1</span>
+
+U_ceil  = B_off + <span class="r">ceil(r15)</span>   <span class="comment">← R=14</span>
+V_ceil  = <span class="g">ceil(g15)</span>          <span class="comment">← G=2</span>
+
+<span class="comment">R과 G가 동시에 올라감</span></div>
+    </div>
+    <div style="padding-top: 16px; font-size:0.88rem; color:#bbb;">
+      <p>S_floor = <span style="color:#ff8080">(R=13</span>, <span style="color:#80ff99">G=1)</span> 코너</p>
+      <p>S_ceil = <span style="color:#ff8080">(R=14</span>, <span style="color:#80ff99">G=2)</span> 코너</p>
+      <p style="margin-top:8px; color:#666;">→ 대각선 방향 양 끝점만 샘플</p>
+    </div>
+  </div>
+
+  <div style="margin-top: 24px;">
+    <svg width="320" height="260">
+      <!-- grid -->
+      <line x1="60" y1="40" x2="60" y2="210" stroke="#333" stroke-width="1"/>
+      <line x1="220" y1="40" x2="220" y2="210" stroke="#333" stroke-width="1"/>
+      <line x1="40" y1="40" x2="300" y2="40" stroke="#333" stroke-width="1"/>
+      <line x1="40" y1="200" x2="300" y2="200" stroke="#333" stroke-width="1"/>
+
+      <!-- axis -->
+      <line x1="40" y1="210" x2="295" y2="210" stroke="#555" stroke-width="1.5"/>
+      <line x1="40" y1="210" x2="40" y2="32" stroke="#555" stroke-width="1.5"/>
+      <text x="300" y="214" fill="#888" font-size="12">R</text>
+      <text x="28" y="28" fill="#888" font-size="12">G</text>
+      <text x="55" y="224" fill="#888" font-size="11">13</text>
+      <text x="215" y="224" fill="#888" font-size="11">14</text>
+      <text x="24" y="204" fill="#888" font-size="11">1</text>
+      <text x="24" y="44" fill="#888" font-size="11">2</text>
+
+      <!-- missing corners (ghost) -->
+      <circle cx="60" cy="40" r="7" fill="none" stroke="#444" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="64" y="36" fill="#444" font-size="10">좌상(13,2) 없음</text>
+
+      <circle cx="220" cy="200" r="7" fill="none" stroke="#444" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="224" y="218" fill="#444" font-size="10">우하(14,1) 없음</text>
+
+      <!-- diagonal line -->
+      <line x1="60" y1="200" x2="220" y2="40" stroke="#ff4040" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+      <!-- actual sample points -->
+      <circle cx="60" cy="200" r="8" fill="#ff6b6b"/>
+      <text x="64" y="218" fill="#ff6b6b" font-size="10">S_floor(13,1)</text>
+
+      <circle cx="220" cy="40" r="8" fill="#ff6b6b"/>
+      <text x="224" y="36" fill="#ff6b6b" font-size="10">S_ceil(14,2)</text>
+
+      <!-- target point -->
+      <circle cx="140" cy="120" r="9" fill="#f0c060" stroke="#fff" stroke-width="1.5"/>
+      <text x="148" y="116" fill="#f0c060" font-size="11" font-weight="bold">★ 목표(13.5, 1.5)</text>
+
+      <!-- lerp result on diagonal -->
+      <circle cx="140" cy="120" r="5" fill="none" stroke="#ff4040" stroke-width="2"/>
+      <text x="64" y="130" fill="#ff6060" font-size="10">대각선의 중간값</text>
+      <text x="64" y="143" fill="#666" font-size="10">= 우연히 같은 위치지만</text>
+      <text x="64" y="156" fill="#666" font-size="10">R≠G인 경우엔 완전히 빗나감</text>
+    </svg>
+  </div>
+
+  <p>R=0.9, G=0.1처럼 <strong>R과 G가 비대칭인 경우</strong>엔 대각선 lerp가 완전히 빗나가요.</p>
+
+  <svg width="320" height="260" style="margin-top:8px;">
+    <!-- grid -->
+    <line x1="60" y1="40" x2="60" y2="210" stroke="#333" stroke-width="1"/>
+    <line x1="220" y1="40" x2="220" y2="210" stroke="#333" stroke-width="1"/>
+    <line x1="40" y1="40" x2="300" y2="40" stroke="#333" stroke-width="1"/>
+    <line x1="40" y1="160" x2="300" y2="160" stroke="#333" stroke-width="1"/>
+    <line x1="40" y1="200" x2="300" y2="200" stroke="#333" stroke-width="1"/>
+
+    <!-- axis -->
+    <line x1="40" y1="210" x2="295" y2="210" stroke="#555" stroke-width="1.5"/>
+    <line x1="40" y1="210" x2="40" y2="32" stroke="#555" stroke-width="1.5"/>
+    <text x="300" y="214" fill="#888" font-size="12">R</text>
+    <text x="28" y="28" fill="#888" font-size="12">G</text>
+    <text x="55" y="224" fill="#888" font-size="11">13</text>
+    <text x="215" y="224" fill="#888" font-size="11">14</text>
+    <text x="24" y="204" fill="#888" font-size="11">1</text>
+    <text x="24" y="164" fill="#888" font-size="11">2</text>
+    <text x="24" y="44" fill="#888" font-size="11">3</text>
+
+    <!-- case: R=13.9, G=1.1 -->
+    <!-- diagonal line (구버전 샘플: floor=(13,1), ceil=(14,3)) -->
+    <line x1="60" y1="200" x2="220" y2="40" stroke="#ff4040" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+    <circle cx="60" cy="200" r="7" fill="#ff6b6b"/>
+    <text x="64" y="218" fill="#ff6b6b" font-size="10">S_floor(13,1)</text>
+
+    <circle cx="220" cy="40" r="7" fill="#ff6b6b"/>
+    <text x="224" y="36" fill="#ff6b6b" font-size="10">S_ceil(14,3)</text>
+
+    <!-- 실제 목표: R=13.9(거의 오른쪽), G=1.1(거의 아래쪽) -->
+    <circle cx="212" cy="192" r="9" fill="#f0c060" stroke="#fff" stroke-width="1.5"/>
+    <text x="144" y="188" fill="#f0c060" font-size="11" font-weight="bold">★ 목표(13.9, 1.1)</text>
+
+    <!-- 구버전이 실제로 계산하는 위치 (frac_r=0.9, frac_g=0.1 → 대각선의 0.9 지점) -->
+    <!-- 대각선: (60,200)→(220,40), 0.9 지점 -->
+    <circle cx="204" cy="56" r="7" fill="#ff4040" stroke="#fff" stroke-width="1.5"/>
+    <text x="148" y="52" fill="#ff4040" font-size="10">구버전 결과(R비율로)</text>
+    <text x="148" y="64" fill="#666" font-size="10">← 목표랑 완전히 다른 위치</text>
+
+    <!-- arrow -->
+    <line x1="212" y1="192" x2="207" y2="65" stroke="#888" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arrow2)"/>
+    <defs>
+      <marker id="arrow2" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto">
+        <path d="M0,0 L0,5 L5,2.5 z" fill="#888"/>
+      </marker>
+    </defs>
+    <text x="180" y="130" fill="#ff6060" font-size="10">오차 발생!</text>
+  </svg>
+
+  <p style="margin-top:8px;">R=0.9(거의 오른쪽), G=0.1(거의 아래쪽)이면 목표는 <span class="highlight">오른쪽 아래</span>인데,<br>
+  구버전은 R 비율(0.9)을 대각선에 적용해서 <span style="color:#ff6b6b">왼쪽 아래→오른쪽 위 대각선의 90% 지점</span>을 결과로 내요. 완전히 빗나가죠.</p>
+</div>
+
+<!-- SECTION 4 -->
+<div class="section">
+  <h2>신버전 — R/G는 GPU에게, B만 수동</h2>
+
+  <div class="compare">
+    <div class="compare-box good">
+      <div class="compare-title good">신버전 코드</div>
+      <div class="code" style="font-size:0.78rem; padding:10px;">U = B_off + <span class="r">r15</span>  <span class="comment">← 소수점 그대로 13.5</span>
+V = <span class="g">g15 / 15.0</span>   <span class="comment">← 소수점 그대로 0.1</span>
+
+<span class="comment">R/G는 소수점 UV → GPU Bilinear</span>
+<span class="comment">슬라이스4에서 샘플 (4점 자동 처리)</span>
+<span class="comment">슬라이스5에서 샘플 (4점 자동 처리)</span>
+
+result = lerp(S_floor, S_ceil, <span class="b">fb</span>)
+         <span class="comment">← B만 수동으로 섞음</span></div>
+    </div>
+    <div style="padding-top: 16px; font-size:0.88rem; color:#bbb;">
+      <p>S_floor = 슬라이스4에서 GPU가 4점 보간한 결과</p>
+      <p>S_ceil = 슬라이스5에서 GPU가 4점 보간한 결과</p>
+      <p style="margin-top:8px; color:#6bff8a;">→ R/G 위치가 동일한 두 점만 비교<br>→ B 비율 fb로 선형 보간</p>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;">
+    <svg width="500" height="160">
+      <!-- slice 4 -->
+      <rect x="40" y="30" width="160" height="100" fill="#1a1a2a" stroke="#3a3a5a" stroke-width="1.5" rx="4"/>
+      <text x="100" y="20" fill="#6baeff" font-size="12" text-anchor="middle">슬라이스 4 (B=4)</text>
+      <!-- 4 corners -->
+      <circle cx="60" cy="110" r="5" fill="#3a5a3a"/>
+      <circle cx="180" cy="110" r="5" fill="#3a5a3a"/>
+      <circle cx="60" cy="50" r="5" fill="#3a5a3a"/>
+      <circle cx="180" cy="50" r="5" fill="#3a5a3a"/>
+      <!-- sample point -->
+      <circle cx="148" cy="101" r="7" fill="#6bff8a" stroke="#fff" stroke-width="1.5"/>
+      <text x="148" y="125" fill="#6bff8a" font-size="10" text-anchor="middle">S_floor</text>
+      <text x="148" y="136" fill="#888" font-size="9" text-anchor="middle">GPU가 4점 보간</text>
+
+      <!-- arrow -->
+      <text x="225" y="85" fill="#f0c060" font-size="22" text-anchor="middle">↔</text>
+      <text x="225" y="105" fill="#f0c060" font-size="10" text-anchor="middle">fb=0.5</text>
+      <text x="225" y="116" fill="#888" font-size="9" text-anchor="middle">수동 lerp</text>
+
+      <!-- slice 5 -->
+      <rect x="260" y="30" width="160" height="100" fill="#1a2a1a" stroke="#3a5a3a" stroke-width="1.5" rx="4"/>
+      <text x="340" y="20" fill="#6bff8a" font-size="12" text-anchor="middle">슬라이스 5 (B=5)</text>
+      <circle cx="280" cy="110" r="5" fill="#3a5a3a"/>
+      <circle cx="400" cy="110" r="5" fill="#3a5a3a"/>
+      <circle cx="280" cy="50" r="5" fill="#3a5a3a"/>
+      <circle cx="400" cy="50" r="5" fill="#3a5a3a"/>
+      <circle cx="368" cy="101" r="7" fill="#6bff8a" stroke="#fff" stroke-width="1.5"/>
+      <text x="368" y="125" fill="#6bff8a" font-size="10" text-anchor="middle">S_ceil</text>
+      <text x="368" y="136" fill="#888" font-size="9" text-anchor="middle">GPU가 4점 보간</text>
+
+      <!-- same UV marker -->
+      <line x1="148" y1="101" x2="368" y2="101" stroke="#f0c060" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="258" y="98" fill="#888" font-size="9" text-anchor="middle">같은 R/G 위치</text>
+
+      <!-- result -->
+      <rect x="430" y="55" width="60" height="40" fill="#2a2a1a" stroke="#f0c060" stroke-width="1.5" rx="4"/>
+      <text x="460" y="72" fill="#f0c060" font-size="10" text-anchor="middle">result</text>
+      <text x="460" y="84" fill="#888" font-size="9" text-anchor="middle">★ 정확</text>
+      <line x1="225" y1="85" x2="430" y2="75" stroke="#f0c060" stroke-width="1" stroke-dasharray="3,2"/>
+    </svg>
+  </div>
+
+  <p>두 슬라이스에서 <strong>같은 R/G 좌표</strong>로 샘플한 결과를 B 비율로 섞어요.<br>
+  R/G 보간은 GPU가 각 슬라이스 안에서 올바르게 처리하고, B 보간만 셰이더가 담당해요.</p>
+</div>
+
+<!-- SECTION 5 -->
+<div class="section">
+  <h2>Q5 — 채널을 다른 비율로 재조합하면 안 되는 이유</h2>
+  <p><code>S_floor</code>는 이미 LUT가 처리한 <strong>완성된 출력 색상</strong>이에요. 채널을 쪼개서 다른 비율로 섞으면 원래 LUT 의도가 깨져요.</p>
+
+  <div class="compare">
+    <div class="compare-box bad">
+      <div class="compare-title bad">구버전 — 채널마다 다른 비율</div>
+      <div class="code" style="font-size:0.78rem; padding:10px;"><span class="comment">S_floor = LUT[R=13, G=1, B=4]의 출력</span>
+<span class="comment">         = (0.82, 0.44, 0.10)  ← 하나의 색상</span>
+
+<span class="comment">S_ceil  = LUT[R=14, G=2, B=5]의 출력</span>
+<span class="comment">         = (0.95, 0.51, 0.33)  ← 하나의 색상</span>
+
+result.<span class="r">r</span> = lerp(0.82, 0.95, <span class="r">fr=0.9</span>)  <span class="comment">← R 비율</span>
+result.<span class="g">g</span> = lerp(0.44, 0.51, <span class="g">fg=0.1</span>)  <span class="comment">← G 비율 (다름!)</span>
+result.<span class="b">b</span> = lerp(0.10, 0.33, <span class="b">fb=0.5</span>)  <span class="comment">← B 비율 (다름!)</span></div>
+    </div>
+    <div class="compare-box good">
+      <div class="compare-title good">신버전 — 하나의 비율</div>
+      <div class="code" style="font-size:0.78rem; padding:10px;"><span class="comment">S_floor = 슬라이스4, R=13.5, G=1.5 의 출력</span>
+<span class="comment">         = (0.88, 0.47, 0.12)  ← GPU 보간 완료</span>
+
+<span class="comment">S_ceil  = 슬라이스5, R=13.5, G=1.5 의 출력</span>
+<span class="comment">         = (0.91, 0.49, 0.18)  ← GPU 보간 완료</span>
+
+<span class="comment">두 점의 R/G 위치가 동일</span>
+result = lerp(S_floor, S_ceil, <span class="b">fb=0.5</span>)
+<span class="comment">         모든 채널을 같은 비율로 섞음</span></div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px; background:#111; border-radius:8px; padding:18px; border-left:3px solid #f0c060;">
+    <p style="color:#f0c060; font-weight:bold; margin-bottom:8px;">핵심 차이</p>
+    <p>구버전: <span style="color:#ff6b6b">서로 다른 3D 위치의 두 색상</span>을 채널마다 다른 비율로 분해해서 재조합 → LUT가 의도한 색이 아닌 임의의 색</p>
+    <p style="margin-top:8px;">신버전: <span style="color:#6bff8a">같은 R/G 위치의 두 색상(B만 다름)</span>을 B 비율 하나로 통째로 섞음 → LUT 의도 그대로 보간</p>
+  </div>
+</div>
+
+</body>
+</html>

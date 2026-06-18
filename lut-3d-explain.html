@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>LUT 3D Cube — 보간 원리</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0c0c0c; color: #ddd; font-family: 'Segoe UI', sans-serif; }
+
+  .page { max-width: 960px; margin: 0 auto; padding: 52px 28px 80px; }
+
+  h1 { font-size: 1.4rem; color: #fff; margin-bottom: 4px; }
+  .page-sub { color: #444; font-size: 0.85rem; margin-bottom: 60px; }
+
+  /* ── 섹션 ── */
+  .sec { margin-bottom: 80px; }
+  .sec-header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; }
+  .sec-num { font-size: 0.72rem; font-family: Consolas, monospace; color: #444; letter-spacing: 0.1em; }
+  .sec-title { font-size: 1rem; color: #ccc; font-weight: 600; }
+  .sec-desc { font-size: 0.86rem; color: #666; line-height: 1.7; margin-bottom: 20px; max-width: 700px; }
+
+  /* ── 뷰어 박스 ── */
+  .viewer-box { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; overflow: hidden; }
+  .viewer-top { position: relative; }
+  canvas { display: block; width: 100%; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+
+  /* 뷰어 안 오버레이 힌트 */
+  .view-hint {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.55); border: 1px solid #2a2a2a; border-radius: 20px;
+    padding: 5px 14px; font-size: 0.75rem; color: #555; white-space: nowrap; pointer-events: none;
+  }
+
+  /* ── 콜아웃 패널 (뷰어 아래) ── */
+  .callout-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #1a1a1a; border-top: 1px solid #1a1a1a; }
+  .callout-row.two { grid-template-columns: repeat(2, 1fr); }
+  .callout { background: #111; padding: 18px 20px; }
+  .callout-label { font-size: 0.7rem; font-family: Consolas, monospace; color: #444; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .callout-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+  .callout-body { font-size: 0.82rem; color: #777; line-height: 1.65; }
+
+  .r { color: #ff7070; } .g { color: #60e878; } .b { color: #6aabff; }
+  .y { color: #f0c060; } .w { color: #ddd; }
+  strong { color: #ccc; font-weight: 600; }
+
+  /* ── 범례 ── */
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 14px 20px; border-top: 1px solid #1a1a1a; }
+  .leg-item { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: #666; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .leg-line { width: 22px; height: 2px; flex-shrink: 0; }
+
+  /* ── 토글 버튼 ── */
+  .toggle-row { display: flex; gap: 8px; padding: 12px 20px; border-top: 1px solid #1a1a1a; }
+  .toggle-btn {
+    background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px;
+    color: #888; font-size: 0.78rem; padding: 5px 14px; cursor: pointer; transition: all 0.15s;
+  }
+  .toggle-btn:hover { border-color: #444; color: #bbb; }
+  .toggle-btn.on { border-color: #555; color: #eee; background: #222; }
+  .toggle-btn.on.red-btn { border-color: #a03030; color: #ff8080; background: #1e1010; }
+  .toggle-btn.on.green-btn { border-color: #206030; color: #70ff90; background: #0e1a10; }
+
+  hr.divider { border: none; border-top: 1px solid #161616; margin: 72px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>LUT Color Grading — 3D Cube 보간 원리</h1>
+<p class="page-sub">드래그로 회전 · 각 뷰어 아래 설명 패널에서 핵심 확인</p>
+
+<!-- ══════════════════════════════════════════════
+     SECTION 1 — RGB 3D Cube
+══════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-header">
+    <span class="sec-num">01</span>
+    <span class="sec-title">RGB 3D Cube 구조</span>
+  </div>
+  <p class="sec-desc">
+    LUT의 본질은 3D 큐브예요. 씬 컬러 하나(R, G, B)가 큐브 안의 한 점이고, LUT는 그 점을 변환된 색상으로 바꿔주는 테이블입니다.
+    큐브를 돌려보면서 각 꼭짓점 색상이 RGB 조합임을 확인해보세요.
+  </p>
+  <div class="viewer-box">
+    <div class="viewer-top">
+      <canvas id="c1" height="460"></canvas>
+      <div class="view-hint">드래그로 회전</div>
+    </div>
+    <div class="callout-row">
+      <div class="callout">
+        <div class="callout-label">R 축 — X방향</div>
+        <div class="callout-title"><span class="r">Red</span> 채널</div>
+        <div class="callout-body">오른쪽으로 갈수록 R↑<br>슬라이스 내 <strong>U(가로) 좌표</strong>에 대응</div>
+      </div>
+      <div class="callout">
+        <div class="callout-label">G 축 — Y방향</div>
+        <div class="callout-title"><span class="g">Green</span> 채널</div>
+        <div class="callout-body">위로 갈수록 G↑<br>슬라이스 내 <strong>V(세로) 좌표</strong>에 대응</div>
+      </div>
+      <div class="callout">
+        <div class="callout-label">B 축 — Z방향</div>
+        <div class="callout-title"><span class="b">Blue</span> 채널</div>
+        <div class="callout-body">앞뒤 방향 = <strong>슬라이스 번호</strong><br>R/G와 달리 UV 좌표가 아님 → 수동 보간 필요</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#ff5555"></div>R축 (→)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#55e870"></div>G축 (↑)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#5588ff"></div>B축 (앞↔뒤)</div>
+      <div class="leg-item" style="margin-left:auto; color:#444; font-size:0.75rem;">각 점의 색상 = 해당 위치의 RGB 값</div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════════════════════════════════
+     SECTION 2 — B축 슬라이싱
+══════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-header">
+    <span class="sec-num">02</span>
+    <span class="sec-title">B축 슬라이싱 → 256×16 스트립</span>
+  </div>
+  <p class="sec-desc">
+    GPU에서 3D 큐브를 직접 쓰는 대신, UE5는 큐브를 <strong class="w">B축 기준으로 16장</strong>으로 잘라 가로로 이어붙입니다.
+    아래 뷰어에서 애니메이션이 자동으로 슬라이스를 분리/합체해요.
+    <strong class="w">B가 슬라이스 번호</strong>라는 게 뭔지, R/G가 각 슬라이스 내 UV라는 게 뭔지 확인하세요.
+  </p>
+  <div class="viewer-box">
+    <div class="viewer-top">
+      <canvas id="c2" height="480"></canvas>
+      <div class="view-hint">드래그로 회전 · 슬라이스 자동 분리/합체</div>
+    </div>
+    <div class="callout-row two">
+      <div class="callout">
+        <div class="callout-label">슬라이스 구조</div>
+        <div class="callout-title">B값 → 슬라이스 번호</div>
+        <div class="callout-body">
+          B=0 → 슬라이스 0 (가장 뒤)<br>
+          B=0.5 → 슬라이스 7~8 사이<br>
+          B=1 → 슬라이스 15 (가장 앞)<br><br>
+          각 슬라이스는 <span class="r">R</span>×<span class="g">G</span> 16×16 격자
+        </div>
+      </div>
+      <div class="callout">
+        <div class="callout-label">왜 B만 수동 보간인가</div>
+        <div class="callout-title">슬라이스 사이 = 물리적 공백</div>
+        <div class="callout-body">
+          슬라이스는 텍스쳐 상에서 가로로 떨어진 별개 영역이에요.<br>
+          GPU Bilinear는 하나의 슬라이스 안에서만 자동 보간해요.<br><br>
+          슬라이스 <strong>경계를 넘는 보간</strong>은 직접 두 슬라이스를 샘플해서 <code style="color:#aaa;font-size:0.8rem">lerp(S0, S1, fb)</code>로 처리해야 해요.
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#5588ff;opacity:0.7"></div>낮은 B값 슬라이스 (어두운 파랑)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#aaccff"></div>높은 B값 슬라이스 (밝은 파랑)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#f0c060"></div>B 보간 연결선 (슬라이스 사이)</div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════════════════════════════════════
+     SECTION 3 — 보간 비교
+══════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-header">
+    <span class="sec-num">03</span>
+    <span class="sec-title">구버전 vs 신버전 샘플링 비교</span>
+  </div>
+  <p class="sec-desc">
+    씬 컬러 <span class="r">R=0.9</span>, <span class="g">G=0.1</span>, <span class="b">B=0.3</span>을 LUT에서 찾는 경우예요.
+    버튼으로 구버전/신버전 샘플 포인트를 켜고 끄면서 <span class="y">★ 목표 위치</span>와 실제 샘플 위치의 차이를 비교하세요.
+    <strong class="w">목표는 오른쪽 아래 코너</strong>에 있어요. 구버전이 왜 틀렸는지 보여요.
+  </p>
+  <div class="viewer-box">
+    <div class="viewer-top">
+      <canvas id="c3" height="500"></canvas>
+      <div class="view-hint">드래그로 회전 · 아래 버튼으로 켜고 끄기</div>
+    </div>
+    <div class="toggle-row">
+      <span style="font-size:0.78rem;color:#444;align-self:center;margin-right:4px">표시:</span>
+      <button class="toggle-btn on red-btn" id="btn-old">구버전 대각선 2점</button>
+      <button class="toggle-btn on green-btn" id="btn-new">신버전 4점 Bilinear</button>
+      <button class="toggle-btn on" id="btn-target" style="color:#f0c060;border-color:#6a5020;background:#1a1500">★ 목표점</button>
+      <button class="toggle-btn on" id="btn-blerp" style="color:#aaa;border-color:#3a3a3a">B 보간선</button>
+    </div>
+    <div class="callout-row two">
+      <div class="callout" style="border-top:2px solid #3a1515">
+        <div class="callout-label">구버전 — 빨간 점 2개</div>
+        <div class="callout-title" style="color:#ff7070">대각선 샘플의 문제</div>
+        <div class="callout-body">
+          floor(R,G)와 ceil(R,G)를 <strong>동시에</strong> 적용하면<br>
+          샘플이 <strong>(R_floor, G_floor)</strong>와 <strong>(R_ceil, G_ceil)</strong>이에요.<br><br>
+          R=0.9(오른쪽 끝), G=0.1(아래쪽 끝)이면<br>
+          ★목표는 <strong>오른쪽 아래</strong>인데 구버전 대각선은<br>
+          <strong style="color:#ff7070">왼쪽아래→오른쪽위</strong> 방향 → 완전히 빗나감
+        </div>
+      </div>
+      <div class="callout" style="border-top:2px solid #153a20">
+        <div class="callout-label">신버전 — 초록 점 4개</div>
+        <div class="callout-title" style="color:#60e878">4점 Bilinear + B 수동 lerp</div>
+        <div class="callout-body">
+          R, G 소수점 그대로 UV에 넘기면<br>
+          GPU가 <strong>4개 코너를 목표 주변에 배치</strong>해요.<br><br>
+          R_floor/ceil × G_floor/ceil = 4점이 목표를 <strong>정확히 둘러쌈</strong><br>
+          B축만 수동 <code style="color:#aaa;font-size:0.8rem">lerp(S_floor, S_ceil, fb)</code>로 처리
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#f0c060"></div>★ 목표 위치 (R=0.9, G=0.1)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ff4040"></div>구버전 샘플 2점</div>
+      <div class="leg-item"><div class="leg-line" style="background:repeating-linear-gradient(90deg,#ff4040 0,#ff4040 4px,transparent 4px,transparent 7px)"></div>구버전 대각선</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#40e860"></div>신버전 샘플 4점</div>
+      <div class="leg-item"><div class="leg-line" style="background:repeating-linear-gradient(90deg,#40e860 0,#40e860 4px,transparent 4px,transparent 7px)"></div>신버전 4점 사각형</div>
+      <div class="leg-item"><div class="leg-line" style="background:repeating-linear-gradient(90deg,#f0c060 0,#f0c060 4px,transparent 4px,transparent 7px)"></div>B 보간 연결선</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+// ─────────────────────────────────────────────
+// 공통 수학 유틸
+// ─────────────────────────────────────────────
+function mulM(a,b){
+  const r=new Array(16).fill(0);
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++)for(let k=0;k<4;k++)r[i*4+j]+=a[i*4+k]*b[k*4+j];
+  return r;
+}
+function rotX(t){const c=Math.cos(t),s=Math.sin(t);return[1,0,0,0,0,c,-s,0,0,s,c,0,0,0,0,1];}
+function rotY(t){const c=Math.cos(t),s=Math.sin(t);return[c,0,s,0,0,1,0,0,-s,0,c,0,0,0,0,1];}
+
+function proj3d(v, m, cx, cy, scale){
+  const x=m[0]*v[0]+m[1]*v[1]+m[2]*v[2];
+  const y=m[4]*v[0]+m[5]*v[1]+m[6]*v[2];
+  const z=m[8]*v[0]+m[9]*v[1]+m[10]*v[2];
+  const fov=4.0;
+  const d=fov/(fov+z*0.6);
+  return [cx+x*scale*d, cy-y*scale*d, z];
+}
+
+function makeDrag(canvas, onDrag){
+  let down=false,lx=0,ly=0;
+  const on=(dx,dy)=>onDrag(dx,dy);
+  canvas.addEventListener('mousedown',e=>{down=true;lx=e.clientX;ly=e.clientY;});
+  window.addEventListener('mouseup',()=>down=false);
+  window.addEventListener('mousemove',e=>{
+    if(!down)return;
+    on(e.clientX-lx,e.clientY-ly);lx=e.clientX;ly=e.clientY;
+  });
+  canvas.addEventListener('touchstart',e=>{down=true;lx=e.touches[0].clientX;ly=e.touches[0].clientY;e.preventDefault();},{passive:false});
+  canvas.addEventListener('touchend',()=>down=false);
+  canvas.addEventListener('touchmove',e=>{
+    if(!down)return;
+    on(e.touches[0].clientX-lx,e.touches[0].clientY-ly);
+    lx=e.touches[0].clientX;ly=e.touches[0].clientY;e.preventDefault();
+  },{passive:false});
+}
+
+function arrow(ctx,from,to,color,lw=2){
+  const dx=to[0]-from[0],dy=to[1]-from[1];
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2)return;
+  const ux=dx/len,uy=dy/len;
+  const hs=9;
+  ctx.beginPath();ctx.moveTo(from[0],from[1]);ctx.lineTo(to[0],to[1]);
+  ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(to[0],to[1]);
+  ctx.lineTo(to[0]-ux*hs-uy*hs*0.5,to[1]-uy*hs+ux*hs*0.5);
+  ctx.lineTo(to[0]-ux*hs+uy*hs*0.5,to[1]-uy*hs-ux*hs*0.5);
+  ctx.closePath();ctx.fillStyle=color;ctx.fill();
+}
+
+function label(ctx,text,x,y,color='#aaa',size=12,bold=false){
+  ctx.font=(bold?'bold ':'')+size+'px Segoe UI';
+  ctx.fillStyle=color;ctx.fillText(text,x,y);
+}
+
+// ─────────────────────────────────────────────
+// CANVAS 1 — RGB Cube
+// ─────────────────────────────────────────────
+(function(){
+  const canvas=document.getElementById('c1');
+  const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth||900, H=460;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(DPR,DPR);
+  const cx=W/2, cy=H/2+10, SC=Math.min(W,H)*0.37;
+
+  let rx=0.38,ry=0.58;
+  function M(){return mulM(rotX(rx),rotY(ry));}
+  function P(v){return proj3d(v,M(),cx,cy,SC);}
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const m=M();
+    const N=7;
+    const pts=[];
+    // 외면 점만 (표면 가시성)
+    for(let ri=0;ri<=N;ri++)for(let gi=0;gi<=N;gi++)for(let bi=0;bi<=N;bi++){
+      // 표면 점만
+      if(ri>0&&ri<N&&gi>0&&gi<N&&bi>0&&bi<N)continue;
+      const rv=ri/N,gv=gi/N,bv=bi/N;
+      const p=proj3d([rv-0.5,gv-0.5,bv-0.5],m,cx,cy,SC);
+      pts.push({p,rv,gv,bv,z:p[2]});
+    }
+    pts.sort((a,b)=>a.z-b.z);
+    for(const pt of pts){
+      const depth=0.35+pt.z*0.5;
+      const alpha=Math.min(1,Math.max(0.1,depth));
+      const r=Math.round(pt.rv*255),g=Math.round(pt.gv*255),b=Math.round(pt.bv*255);
+      ctx.beginPath();
+      // 코너는 크게
+      const isCorner=(pt.rv===0||pt.rv===1)&&(pt.gv===0||pt.gv===1)&&(pt.bv===0||pt.bv===1);
+      ctx.arc(pt.p[0],pt.p[1],isCorner?6:3.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${r},${g},${b},${alpha})`;
+      ctx.fill();
+    }
+
+    // 코너 색상 라벨
+    const corners=[
+      {v:[0.5,-0.5,-0.5],label:'R',color:'#ff6060'},
+      {v:[-0.5,0.5,-0.5],label:'G',color:'#50e870'},
+      {v:[-0.5,-0.5,0.5],label:'B',color:'#5080ff'},
+      {v:[0.5,0.5,0.5],label:'R+G+B\n= White',color:'#fff'},
+      {v:[-0.5,-0.5,-0.5],label:'Black',color:'#555'},
+    ];
+    for(const c of corners){
+      const p=proj3d(c.v,m,cx,cy,SC);
+      ctx.font='bold 11px Segoe UI'; ctx.fillStyle=c.color;
+      ctx.fillText(c.label,p[0]+7,p[1]+4);
+    }
+
+    // 축
+    const O=proj3d([-0.5,-0.5,-0.5],m,cx,cy,SC);
+    const AR=proj3d([0.75,-0.5,-0.5],m,cx,cy,SC);
+    const AG=proj3d([-0.5,0.75,-0.5],m,cx,cy,SC);
+    const AB=proj3d([-0.5,-0.5,0.75],m,cx,cy,SC);
+    arrow(ctx,O,AR,'#ff5555',2.5);
+    arrow(ctx,O,AG,'#44ee66',2.5);
+    arrow(ctx,O,AB,'#4488ff',2.5);
+    label(ctx,'R  (U축)',AR[0]+6,AR[1]+4,'#ff7070',13,true);
+    label(ctx,'G  (V축)',AG[0]+6,AG[1]+4,'#55ff77',13,true);
+    label(ctx,'B  (슬라이스 번호)',AB[0]+6,AB[1]+4,'#6699ff',13,true);
+  }
+  draw();
+  makeDrag(canvas,(dx,dy)=>{ry+=dx*0.01;rx+=dy*0.01;draw();});
+})();
+
+// ─────────────────────────────────────────────
+// CANVAS 2 — B축 슬라이싱 애니메이션
+// ─────────────────────────────────────────────
+(function(){
+  const canvas=document.getElementById('c2');
+  const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth||900, H=480;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(DPR,DPR);
+  const cx=W/2, cy=H/2, SC=Math.min(W,H)*0.32;
+
+  let rx=0.28,ry=0.62,t=0;
+  function M(){return mulM(rotX(rx),rotY(ry));}
+  function P(v){return proj3d(v,M(),cx,cy,SC);}
+
+  const SLICES=8;
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const m=M();
+    // spread: 0=합체, 1=완전분리, 사인파로 왕복
+    const spread=Math.sin(t*0.008)*0.5+0.5;
+
+    const sliceData=[];
+    for(let si=0;si<SLICES;si++){
+      const bv=si/(SLICES-1);
+      const naturalZ=-0.5+bv;
+      const explodedZ=-0.5+bv+(si-(SLICES-1)/2)*spread*0.25;
+      const bz=naturalZ+(explodedZ-naturalZ)*spread;
+
+      const N=5;
+      const pts=[];
+      for(let ri=0;ri<=N;ri++)for(let gi=0;gi<=N;gi++){
+        const rv=ri/N,gv=gi/N;
+        const p=proj3d([rv-0.5,gv-0.5,bz],m,cx,cy,SC);
+        pts.push({p,rv,gv,bv,bz,z:p[2]});
+      }
+      // 평균 z
+      const avgZ=pts.reduce((s,p)=>s+p.z,0)/pts.length;
+      sliceData.push({pts,bv,bz,avgZ,si});
+    }
+    sliceData.sort((a,b)=>a.avgZ-b.avgZ);
+
+    for(const sl of sliceData){
+      const N=5;
+      // 면 배경
+      const c00=proj3d([-0.5,-0.5,sl.bz],m,cx,cy,SC);
+      const c10=proj3d([0.5,-0.5,sl.bz],m,cx,cy,SC);
+      const c11=proj3d([0.5,0.5,sl.bz],m,cx,cy,SC);
+      const c01=proj3d([-0.5,0.5,sl.bz],m,cx,cy,SC);
+      ctx.beginPath();
+      ctx.moveTo(c00[0],c00[1]);ctx.lineTo(c10[0],c10[1]);
+      ctx.lineTo(c11[0],c11[1]);ctx.lineTo(c01[0],c01[1]);ctx.closePath();
+      const bAlpha=0.07+sl.bv*0.06;
+      ctx.fillStyle=`rgba(${Math.round(sl.bv*40)},${Math.round(sl.bv*30)},${Math.round(sl.bv*180)},${bAlpha})`;
+      ctx.fill();
+      const borderA=0.15+spread*0.25;
+      ctx.strokeStyle=`rgba(${Math.round(60+sl.bv*60)},${Math.round(60+sl.bv*60)},${Math.round(150+sl.bv*100)},${borderA})`;
+      ctx.lineWidth=1; ctx.stroke();
+
+      // 도트
+      const sortedPts=[...sl.pts].sort((a,b)=>a.z-b.z);
+      for(const pt of sortedPts){
+        const depth=0.4+pt.z*0.4;
+        const alpha=Math.min(0.95,Math.max(0.15,depth));
+        ctx.beginPath();
+        ctx.arc(pt.p[0],pt.p[1],3,0,Math.PI*2);
+        ctx.fillStyle=`rgba(${Math.round(pt.rv*255)},${Math.round(pt.gv*255)},${Math.round(pt.bv*255)},${alpha})`;
+        ctx.fill();
+      }
+
+      // 슬라이스 번호 라벨 (spread가 클 때만)
+      if(spread>0.4){
+        const lp=proj3d([0.5,0.5,sl.bz],m,cx,cy,SC);
+        const a=Math.min(1,(spread-0.4)*3);
+        ctx.font='11px Consolas';
+        ctx.fillStyle=`rgba(160,180,255,${a*0.8})`;
+        ctx.fillText(`B=${sl.si}`,lp[0]+6,lp[1]-3);
+      }
+
+      // B 보간 연결선 (spread가 클 때, 슬라이스 사이)
+      if(sl.si<SLICES-1 && spread>0.3){
+        const next=sliceData.find(s=>s.si===sl.si+1);
+        if(next){
+          const mp=proj3d([0,0,sl.bz],m,cx,cy,SC);
+          const np=proj3d([0,0,next.bz],m,cx,cy,SC);
+          const a=Math.min(1,(spread-0.3)*2.5)*0.4;
+          ctx.beginPath();ctx.moveTo(mp[0],mp[1]);ctx.lineTo(np[0],np[1]);
+          ctx.strokeStyle=`rgba(240,192,96,${a})`;
+          ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+        }
+      }
+    }
+
+    // 상태 표시 (합체/분리)
+    const stateA=Math.min(1,spread*3);
+    const stateB=Math.min(1,(1-spread)*3);
+    if(stateA>0.1){
+      ctx.font='12px Segoe UI'; ctx.fillStyle=`rgba(100,160,255,${stateA*0.7})`;
+      ctx.fillText('슬라이스 분리 중 — B값마다 별도 면',cx-110,H-22);
+    } else if(stateB>0.1){
+      ctx.font='12px Segoe UI'; ctx.fillStyle=`rgba(150,150,150,${stateB*0.5})`;
+      ctx.fillText('합체 상태 — 3D 큐브처럼 보임',cx-90,H-22);
+    }
+
+    // 축
+    const O=proj3d([-0.5,-0.5,-0.5],m,cx,cy,SC);
+    const AR=proj3d([0.7,-0.5,-0.5],m,cx,cy,SC);
+    const AG=proj3d([-0.5,0.7,-0.5],m,cx,cy,SC);
+    const AB=proj3d([-0.5,-0.5,0.7],m,cx,cy,SC);
+    arrow(ctx,O,AR,'#ff5555',2);arrow(ctx,O,AG,'#44ee66',2);arrow(ctx,O,AB,'#4488ff',2);
+    label(ctx,'R',AR[0]+5,AR[1]+4,'#ff7070',12,true);
+    label(ctx,'G',AG[0]+5,AG[1]+4,'#55ff77',12,true);
+    label(ctx,'B (슬라이스)',AB[0]+5,AB[1]+4,'#6699ff',12,true);
+  }
+
+  function loop(){t++;draw();requestAnimationFrame(loop);}
+  loop();
+  makeDrag(canvas,(dx,dy)=>{ry+=dx*0.01;rx+=dy*0.01;});
+})();
+
+// ─────────────────────────────────────────────
+// CANVAS 3 — 보간 비교
+// ─────────────────────────────────────────────
+(function(){
+  const canvas=document.getElementById('c3');
+  const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth||900, H=500;
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.scale(DPR,DPR);
+  const cx=W/2, cy=H/2, SC=Math.min(W,H)*0.33;
+
+  let rx=0.28,ry=0.52;
+  let showOld=true, showNew=true, showTarget=true, showBlerp=true;
+
+  function M(){return mulM(rotX(rx),rotY(ry));}
+
+  // 씬 컬러값
+  const RV=0.9,GV=0.1,BV=0.3;
+  // 격자 단위 (4분할로 시각화)
+  const GN=4;
+  const rf=Math.floor(RV*GN)/GN, rc=Math.min(1,Math.ceil(RV*GN)/GN);
+  const gf=Math.floor(GV*GN)/GN, gc=Math.min(1,Math.ceil(GV*GN)/GN);
+  // B 슬라이스 두 장
+  const BN=4;
+  const bf=Math.floor(BV*BN)/BN, bc=Math.min(1,Math.ceil(BV*BN)/BN);
+  const fb=(BV-bf)/(bc-bf||1);
+
+  function drawSlice(m, bz, alpha, label_text){
+    const N=GN;
+    // 면
+    const c00=proj3d([-0.5,-0.5,bz-0.5],m,cx,cy,SC);
+    const c10=proj3d([0.5,-0.5,bz-0.5],m,cx,cy,SC);
+    const c11=proj3d([0.5,0.5,bz-0.5],m,cx,cy,SC);
+    const c01=proj3d([-0.5,0.5,bz-0.5],m,cx,cy,SC);
+    ctx.beginPath();
+    ctx.moveTo(c00[0],c00[1]);ctx.lineTo(c10[0],c10[1]);
+    ctx.lineTo(c11[0],c11[1]);ctx.lineTo(c01[0],c01[1]);ctx.closePath();
+    ctx.fillStyle=`rgba(20,25,45,${alpha*0.9})`;ctx.fill();
+    ctx.strokeStyle=`rgba(60,70,140,${alpha*0.7})`;ctx.lineWidth=1;ctx.stroke();
+
+    // 격자 도트
+    const pts=[];
+    for(let ri=0;ri<=N;ri++)for(let gi=0;gi<=N;gi++){
+      const rv=ri/N,gv=gi/N;
+      const p=proj3d([rv-0.5,gv-0.5,bz-0.5],m,cx,cy,SC);
+      pts.push({p,rv,gv,z:p[2]});
+    }
+    pts.sort((a,b)=>a.z-b.z);
+    for(const pt of pts){
+      ctx.beginPath();ctx.arc(pt.p[0],pt.p[1],2.2,0,Math.PI*2);
+      ctx.fillStyle=`rgba(80,100,200,${alpha*0.6})`;ctx.fill();
+    }
+
+    // 라벨
+    const lp=proj3d([0.5,0.5,bz-0.5],m,cx,cy,SC);
+    ctx.font='bold 11px Consolas';
+    ctx.fillStyle=`rgba(140,160,255,${alpha*0.9})`;
+    ctx.fillText(label_text,lp[0]+7,lp[1]-3);
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const m=M();
+
+    // 슬라이스 두 장 (앞뒤 정렬)
+    const pF=proj3d([0,0,bf-0.5],m,cx,cy,SC);
+    const pC=proj3d([0,0,bc-0.5],m,cx,cy,SC);
+    const floorFront=pF[2]<pC[2];
+
+    if(!floorFront){
+      drawSlice(m,bc,0.65,`B_ceil  (B=${bc.toFixed(2)})`);
+      drawSlice(m,bf,1.0, `B_floor (B=${bf.toFixed(2)})`);
+    } else {
+      drawSlice(m,bf,0.65,`B_floor (B=${bf.toFixed(2)})`);
+      drawSlice(m,bc,1.0, `B_ceil  (B=${bc.toFixed(2)})`);
+    }
+
+    // ── 구버전 대각선 2점 ──
+    if(showOld){
+      for(const bz of [bf,bc]){
+        const p1=proj3d([rf-0.5,gf-0.5,bz-0.5],m,cx,cy,SC);
+        const p2=proj3d([rc-0.5,gc-0.5,bz-0.5],m,cx,cy,SC);
+        ctx.beginPath();ctx.moveTo(p1[0],p1[1]);ctx.lineTo(p2[0],p2[1]);
+        ctx.strokeStyle='rgba(255,70,70,0.55)';ctx.lineWidth=1.5;
+        ctx.setLineDash([5,3]);ctx.stroke();ctx.setLineDash([]);
+        for(const p of [p1,p2]){
+          ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);
+          ctx.fillStyle='rgba(255,80,80,0.18)';ctx.fill();
+          ctx.beginPath();ctx.arc(p[0],p[1],4.5,0,Math.PI*2);
+          ctx.fillStyle='#ff5050';ctx.fill();
+          ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=1;ctx.stroke();
+        }
+        // "대각선" 라벨 (앞 슬라이스에만)
+        const mid=[(p1[0]+p2[0])/2,(p1[1]+p2[1])/2];
+        ctx.font='10px Segoe UI';ctx.fillStyle='rgba(255,100,100,0.7)';
+        ctx.fillText('대각선',mid[0]+5,mid[1]-4);
+      }
+    }
+
+    // ── 신버전 4점 사각형 ──
+    if(showNew){
+      for(const bz of [bf,bc]){
+        const p00=proj3d([rf-0.5,gf-0.5,bz-0.5],m,cx,cy,SC);
+        const p10=proj3d([rc-0.5,gf-0.5,bz-0.5],m,cx,cy,SC);
+        const p11=proj3d([rc-0.5,gc-0.5,bz-0.5],m,cx,cy,SC);
+        const p01=proj3d([rf-0.5,gc-0.5,bz-0.5],m,cx,cy,SC);
+        ctx.beginPath();
+        ctx.moveTo(p00[0],p00[1]);ctx.lineTo(p10[0],p10[1]);
+        ctx.lineTo(p11[0],p11[1]);ctx.lineTo(p01[0],p01[1]);ctx.closePath();
+        ctx.strokeStyle='rgba(50,230,90,0.55)';ctx.lineWidth=1.5;
+        ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+        // 면 하이라이트
+        ctx.fillStyle='rgba(50,200,80,0.07)';ctx.fill();
+        for(const p of [p00,p10,p11,p01]){
+          ctx.beginPath();ctx.arc(p[0],p[1],6,0,Math.PI*2);
+          ctx.fillStyle='rgba(50,230,90,0.15)';ctx.fill();
+          ctx.beginPath();ctx.arc(p[0],p[1],4,0,Math.PI*2);
+          ctx.fillStyle='#30e860';ctx.fill();
+          ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1;ctx.stroke();
+        }
+      }
+    }
+
+    // ── B 보간선 + 목표점 ──
+    const tF=proj3d([RV-0.5,GV-0.5,bf-0.5],m,cx,cy,SC);
+    const tC=proj3d([RV-0.5,GV-0.5,bc-0.5],m,cx,cy,SC);
+    const tx=tF[0]+(tC[0]-tF[0])*fb;
+    const ty=tF[1]+(tC[1]-tF[1])*fb;
+
+    if(showBlerp){
+      ctx.beginPath();ctx.moveTo(tF[0],tF[1]);ctx.lineTo(tC[0],tC[1]);
+      ctx.strokeStyle='rgba(240,192,96,0.6)';ctx.lineWidth=2;
+      ctx.setLineDash([5,3]);ctx.stroke();ctx.setLineDash([]);
+      // 양 끝 작은 점
+      for(const p of [tF,tC]){
+        ctx.beginPath();ctx.arc(p[0],p[1],3.5,0,Math.PI*2);
+        ctx.fillStyle='rgba(240,192,96,0.7)';ctx.fill();
+      }
+      ctx.font='10px Consolas';ctx.fillStyle='rgba(240,192,96,0.7)';
+      ctx.fillText(`fb=${fb.toFixed(2)}`,(tF[0]+tC[0])/2+7,(tF[1]+tC[1])/2-5);
+    }
+
+    if(showTarget){
+      // 광륜
+      ctx.beginPath();ctx.arc(tx,ty,16,0,Math.PI*2);
+      ctx.fillStyle='rgba(240,192,96,0.08)';ctx.fill();
+      ctx.beginPath();ctx.arc(tx,ty,10,0,Math.PI*2);
+      ctx.fillStyle='rgba(240,192,96,0.15)';ctx.fill();
+      ctx.beginPath();ctx.arc(tx,ty,5.5,0,Math.PI*2);
+      ctx.fillStyle='#f0c060';ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.font='bold 12px Segoe UI';ctx.fillStyle='#f0c060';
+      ctx.fillText(`★ 목표  R=${RV} G=${GV} B=${BV}`,tx+12,ty+4);
+    }
+
+    // 축
+    const O=proj3d([-0.5,-0.5,-0.5],m,cx,cy,SC);
+    const AR=proj3d([0.72,-0.5,-0.5],m,cx,cy,SC);
+    const AG=proj3d([-0.5,0.72,-0.5],m,cx,cy,SC);
+    const AB=proj3d([-0.5,-0.5,0.72],m,cx,cy,SC);
+    arrow(ctx,O,AR,'#ff5555',2);arrow(ctx,O,AG,'#44ee66',2);arrow(ctx,O,AB,'#4488ff',2);
+    label(ctx,'R',AR[0]+5,AR[1]+4,'#ff7070',12,true);
+    label(ctx,'G',AG[0]+5,AG[1]+4,'#55ff77',12,true);
+    label(ctx,'B',AB[0]+5,AB[1]+4,'#6699ff',12,true);
+  }
+
+  draw();
+  makeDrag(canvas,(dx,dy)=>{ry+=dx*0.01;rx+=dy*0.01;draw();});
+
+  // 토글 버튼
+  function setupBtn(id, flag, setter, cls){
+    const btn=document.getElementById(id);
+    btn.addEventListener('click',()=>{
+      setter(!flag());
+      btn.classList.toggle('on');
+      if(cls) btn.classList.toggle(cls);
+      draw();
+    });
+  }
+  setupBtn('btn-old',()=>showOld,(v)=>showOld=v,'red-btn');
+  setupBtn('btn-new',()=>showNew,(v)=>showNew=v,'green-btn');
+  setupBtn('btn-target',()=>showTarget,(v)=>showTarget=v,null);
+  setupBtn('btn-blerp',()=>showBlerp,(v)=>showBlerp=v,null);
+})();
+</script>
+</body>
+</html>
