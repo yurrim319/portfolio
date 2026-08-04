@@ -1,0 +1,100 @@
+/* MDX 렌더링된 콘텐츠 공통 스타일 — ProjectLayout, print 페이지에서 공유 */
+.mdx-content h2 {
+  font-size: 1.15rem;
+  color: #ccc;
+  font-weight: 600;
+  margin: 3rem 0 0.75rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid #1a1a1a;
+}
+.mdx-content h2:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.mdx-content p {
+  font-size: 0.92rem;
+  color: #888;
+  line-height: 1.85;
+  margin-bottom: 1rem;
+  max-width: 680px;
+}
+.mdx-content strong {
+  color: #bbb;
+  font-weight: 600;
+}
+.mdx-content hr {
+  border: none;
+  border-top: 1px solid #1a1a1a;
+  margin: 3rem 0;
+}
+/* 코드 블록 */
+.mdx-content pre {
+  background: #0e0e0e;
+  border: 1px solid #1e1e1e;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+}
+.mdx-content pre code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: #bbb;
+  line-height: 1.7;
+  background: none;
+  padding: 0;
+}
+.mdx-content :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: #aaa;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+/* 테이블 */
+.mdx-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  margin: 1.25rem 0;
+}
+.mdx-content th {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  color: #666;
+  font-weight: 500;
+  border-bottom: 1px solid #222;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.mdx-content td {
+  padding: 0.6rem 0.9rem;
+  color: #888;
+  border-bottom: 1px solid #1a1a1a;
+}
+.mdx-content tr:last-child td {
+  border-bottom: none;
+}
+/* 리스트 */
+.mdx-content ul {
+  padding-left: 1.25rem;
+  margin: 0.75rem 0 1rem;
+}
+.mdx-content li {
+  font-size: 0.88rem;
+  color: #888;
+  line-height: 1.8;
+  margin-bottom: 0.25rem;
+}
+.mdx-content li code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #aaa;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 1px 5px;
+}

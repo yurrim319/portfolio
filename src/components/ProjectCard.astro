@@ -1,0 +1,75 @@
+---
+import type { Project } from '../types/project';
+
+interface Props { entry: Project }
+const { entry } = Astro.props;
+const { title, subtitle, type, date, chips, thumbnail } = entry.data;
+const base = import.meta.env.BASE_URL;
+
+const THUMB_LABELS: Record<string, string> = {
+  'lut-strip': '256x16_lut.png',
+  'bloom-radial': 'bloom_stencil_mask.usf',
+};
+const thumbLabel = (thumbnail && THUMB_LABELS[thumbnail]) ?? `${entry.id}.md`;
+
+function lutThumbColor(b: number): string {
+  const t = b / 15;
+  const h = Math.round(215 - t * 130);
+  const s = Math.round(55 + t * 15);
+  const l1 = Math.round(6 + t * 18);
+  const l2 = Math.round(20 + t * 35);
+  return `linear-gradient(150deg, hsl(${h}deg ${s}% ${l1}%) 0%, hsl(${h - 15}deg ${s + 5}% ${l2}%) 100%)`;
+}
+const LUT_ROW_A = thumbnail === 'lut-strip' ? Array.from({ length: 16 }, (_, i) => lutThumbColor(i)) : [];
+const LUT_ROW_B = thumbnail === 'lut-strip' ? Array.from({ length: 16 }, (_, i) => lutThumbColor(15 - i)) : [];
+---
+<a class="card" href={`${base}projects/${entry.id}`}>
+  <div class="card-thumb">
+    {thumbnail === 'lut-strip' && (
+      <Fragment>
+        <div class="lut-bg"></div>
+        <div class="lut-strip-thumb">
+          <div class="lut-row">
+            {LUT_ROW_A.map(bg => <div class="lut-row-tile" style={`background:${bg};`}></div>)}
+          </div>
+          <div class="lut-row">
+            {LUT_ROW_B.map(bg => <div class="lut-row-tile" style={`background:${bg};`}></div>)}
+          </div>
+        </div>
+      </Fragment>
+    )}
+    {thumbnail === 'bloom-radial' && (
+      <Fragment>
+        <div class="bloom-bg"></div>
+        <div class="bloom-char"></div>
+      </Fragment>
+    )}
+    {!thumbnail && <div class="thumb-fallback">{title.slice(0, 1)}</div>}
+    <div class="card-thumb-label">{thumbLabel}</div>
+  </div>
+  <div class="card-body">
+    <div class="card-meta">
+      {type && <div class="card-type">{type}</div>}
+      {date && <div class="card-date">{date}</div>}
+    </div>
+    <div class="card-title">{title}</div>
+    {subtitle && <div class="card-desc">{subtitle}</div>}
+    {chips && (
+      <div class="card-chips">
+        {chips.map(chip => <span class="chip">{chip.label}</span>)}
+      </div>
+    )}
+    <div class="card-footer">
+      <span class="read-link">read_more →</span>
+      <div class="status"><span class="dot"></span>published</div>
+    </div>
+  </div>
+</a>
+
+<style>
+  .thumb-fallback {
+    font-family: var(--font-mono);
+    font-size: 2rem;
+    color: #333;
+  }
+</style>

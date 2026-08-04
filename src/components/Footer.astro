@@ -1,0 +1,28 @@
+---
+const base = import.meta.env.BASE_URL;
+---
+<footer class="site-footer">
+  <span>© {new Date().getFullYear()} yurim</span>
+  <a href={`${base}print`}>print / PDF version</a>
+</footer>
+
+<style>
+  .site-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 0 3rem;
+    margin-top: 2rem;
+    border-top: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-text-faint);
+  }
+  .site-footer a {
+    color: var(--color-text-faint);
+    text-decoration: none;
+  }
+  .site-footer a:hover {
+    color: var(--color-accent);
+  }
+</style>

@@ -1,0 +1,35 @@
+---
+import SiteLayout from './SiteLayout.astro';
+import type { Project } from '../types/project';
+import '../styles/mdx-content.css';
+
+interface Props { entry: Project }
+const { entry } = Astro.props;
+const { title, subtitle, type, date, chips } = entry.data;
+const base = import.meta.env.BASE_URL;
+---
+<SiteLayout title={`${title} — yurim · dev`}>
+  <a class="back-link" href={base}>← projects</a>
+
+  <header class="article-header">
+    <div class="article-meta">
+      {type && <span class="article-type">{type}</span>}
+      {date && <span class="article-date">{date}</span>}
+    </div>
+    <h1 class="article-title" set:html={title.replace(/(\w+)$/, '<strong>$1</strong>')} />
+    {subtitle && <p class="article-sub">{subtitle}</p>}
+    {chips && (
+      <div class="article-chips">
+        {chips.map(chip => (
+          <span class={`chip${chip.highlight ? ' hi' : ''}`}>{chip.label}</span>
+        ))}
+      </div>
+    )}
+  </header>
+
+  <div class="mdx-content">
+    <slot />
+  </div>
+
+  <div style="height:4rem;"></div>
+</SiteLayout>

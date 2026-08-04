@@ -1,0 +1,17 @@
+---
+import '../styles/print.css';
+const { title = 'yurim · portfolio (print)' } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>{title}</title>
+</head>
+<body>
+  <div class="print-site">
+    <slot />
+  </div>
+</body>
+</html>

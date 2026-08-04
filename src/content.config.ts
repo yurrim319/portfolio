@@ -1,13 +1,15 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
-const works = defineCollection({
-  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/works' }),
+const projects = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/projects' }),
   schema: z.object({
     title: z.string(),
     subtitle: z.string().optional(),
     type: z.string().optional(),
     date: z.string().optional(),
+    thumbnail: z.string().optional(),
+    draft: z.boolean().optional(),
     chips: z.array(z.object({
       label: z.string(),
       highlight: z.boolean().optional(),
@@ -15,4 +17,12 @@ const works = defineCollection({
   }),
 });
 
-export const collections = { works };
+const pages = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/pages' }),
+  schema: z.object({
+    title: z.string(),
+    description: z.string().optional(),
+  }),
+});
+
+export const collections = { projects, pages };

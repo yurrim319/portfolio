@@ -1,0 +1,26 @@
+---
+import { render } from 'astro:content';
+import PrintLayout from '../layouts/PrintLayout.astro';
+import { getSortedProjects } from '../lib/projects';
+import '../styles/mdx-content.css';
+
+const projects = await getSortedProjects();
+const rendered = await Promise.all(
+  projects.map(async entry => ({ entry, Content: (await render(entry)).Content }))
+);
+---
+<PrintLayout title="yurim · portfolio (print)">
+  {rendered.map(({ entry, Content }) => (
+    <article class="print-project">
+      <header class="print-project-header">
+        {entry.data.type && <span class="print-project-type">{entry.data.type}</span>}
+        {entry.data.date && <span class="print-project-date">{entry.data.date}</span>}
+        <h1 class="print-project-title">{entry.data.title}</h1>
+        {entry.data.subtitle && <p class="print-project-sub">{entry.data.subtitle}</p>}
+      </header>
+      <div class="mdx-content">
+        <Content />
+      </div>
+    </article>
+  ))}
+</PrintLayout>

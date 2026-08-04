@@ -1,0 +1,29 @@
+---
+import { render } from 'astro:content';
+import ProjectLayout from '../../layouts/ProjectLayout.astro';
+import { getVisibleProjects } from '../../lib/projects';
+
+export async function getStaticPaths() {
+  const projects = await getVisibleProjects();
+  return projects.map(entry => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+
+function lutTileColor(b: number): string {
+  const t = b / 15;
+  const h = Math.round(215 - t * 130);
+  const s = Math.round(55 + t * 15);
+  const l1 = Math.round(6 + t * 18);
+  const l2 = Math.round(20 + t * 35);
+  return `linear-gradient(150deg, hsl(${h}deg ${s}% ${l1}%) 0%, hsl(${h - 15}deg ${s + 5}% ${l2}%) 100%)`;
+}
+const LUT_TILES = Array.from({ length: 16 }, (_, i) => lutTileColor(i));
+---
+<ProjectLayout entry={entry}>
+  <Content lutTiles={LUT_TILES} />
+</ProjectLayout>

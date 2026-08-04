@@ -1,0 +1,74 @@
+@import './theme.css';
+
+@page {
+  size: A4;
+  margin: 18mm 16mm;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  background: #fff;
+  color: #000;
+}
+
+.print-site {
+  max-width: 100%;
+}
+
+.print-project {
+  page-break-before: always;
+  break-before: page;
+  padding-bottom: 2rem;
+}
+.print-project:first-child {
+  page-break-before: avoid;
+  break-before: avoid;
+}
+
+.print-project-header {
+  border-bottom: 1px solid #000;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.print-project-type {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: #444;
+}
+.print-project-date {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #444;
+  margin-left: 1rem;
+}
+.print-project-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 0.4rem 0;
+}
+.print-project-sub {
+  font-size: 0.85rem;
+  color: #333;
+}
+
+/* 인쇄에 의미 없는 인터랙티브 요소는 숨김 */
+.lut-viewer,
+.lv-canvas-wrap,
+.lv-toggles {
+  display: none !important;
+}
+
+.mdx-content pre,
+.mdx-content code {
+  color: #000;
+  background: #f2f2f2 !important;
+  border-color: #ccc !important;
+}
+
+.mdx-content a {
+  color: #000;
+  text-decoration: underline;
+}

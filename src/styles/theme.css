@@ -1,0 +1,13 @@
+:root {
+  --color-bg: #fff;
+  --color-text: #111;
+  --color-text-muted: #666;
+  --color-text-faint: #aaa;
+  --color-border: #e2e2e2;
+  --color-accent: #3b5bdb;
+  --color-accent-bg: #f0f3ff;
+  --color-accent-border: #c5d0ff;
+
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}

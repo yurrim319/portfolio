@@ -1,0 +1,22 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { SITE } from '../lib/site';
+---
+<SiteLayout title="contact — yurim · dev">
+  <div class="section">
+    <div class="section-label">// contact</div>
+    <div class="section-title">Get in touch</div>
+    <p class="prose">
+      새로운 프로젝트나 협업 제안은 이메일로 연락해 주세요.
+    </p>
+    <p class="prose">
+      <a href={`mailto:${SITE.email}`}>{SITE.email}</a>
+    </p>
+  </div>
+</SiteLayout>
+
+<style>
+  a {
+    color: var(--color-accent);
+  }
+</style>
