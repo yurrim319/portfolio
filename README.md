@@ -31,3 +31,14 @@ src/
 ## PDF / 인쇄
 
 `/print` 라우트가 모든 프로젝트를 인쇄용 레이아웃으로 이어붙여 렌더링한다. 브라우저 인쇄(Ctrl/Cmd+P) → PDF로 저장하면 된다.
+
+## 콘텐츠 저작 도구 (Portfolio Author)
+
+`src/content/projects`, `src/content/pages`의 글을 GUI로 열람·생성·편집·삭제할 수 있는 로컬 도구. 사이트 배포와는 무관하며 로컬에서만 사용한다. 설계는 [plan/tools-plan.md](plan/tools-plan.md) 참고 (현재는 Phase 1: 파일 탐색기 + 마크다운 에디터 + 저장까지만 구현됨).
+
+```bash
+cd tools/portfolio-author
+npm install
+npm run dev
+```
+(루트에서 `npm run author`로도 실행 가능)

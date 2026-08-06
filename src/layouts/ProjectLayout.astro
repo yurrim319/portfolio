@@ -1,12 +1,12 @@
 ---
 import SiteLayout from './SiteLayout.astro';
 import type { Project } from '../types/project';
+import { BASE as base } from '../lib/site';
 import '../styles/mdx-content.css';
 
 interface Props { entry: Project }
 const { entry } = Astro.props;
 const { title, subtitle, type, date, chips } = entry.data;
-const base = import.meta.env.BASE_URL;
 ---
 <SiteLayout title={`${title} — yurim · dev`}>
   <a class="back-link" href={base}>← projects</a>

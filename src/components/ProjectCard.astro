@@ -1,16 +1,28 @@
 ---
 import type { Project } from '../types/project';
+import { BASE as base } from '../lib/site';
 
 interface Props { entry: Project }
 const { entry } = Astro.props;
 const { title, subtitle, type, date, chips, thumbnail } = entry.data;
-const base = import.meta.env.BASE_URL;
 
 const THUMB_LABELS: Record<string, string> = {
   'lut-strip': '256x16_lut.png',
   'bloom-radial': 'bloom_stencil_mask.usf',
 };
-const thumbLabel = (thumbnail && THUMB_LABELS[thumbnail]) ?? `${entry.id}.md`;
+const isPreset = thumbnail === 'lut-strip' || thumbnail === 'bloom-radial';
+const thumbLabel = isPreset
+  ? THUMB_LABELS[thumbnail!]
+  : thumbnail
+    ? thumbnail.split('/').pop()
+    : `${entry.id}.md`;
+
+// Portfolio Author는 base 경로를 모르는 채로 "/images/<slug>/<file>"만 저장하고,
+// 파일명만 손으로 입력된 경우도 있어 여기서 base를 붙이고 정규화한다.
+const thumbnailSrc =
+  !isPreset && thumbnail
+    ? `${base}${(thumbnail.startsWith('/') ? thumbnail.slice(1) : `images/${entry.id}/${thumbnail}`)}`
+    : undefined;
 
 function lutThumbColor(b: number): string {
   const t = b / 15;
@@ -44,6 +56,7 @@ const LUT_ROW_B = thumbnail === 'lut-strip' ? Array.from({ length: 16 }, (_, i) 
         <div class="bloom-char"></div>
       </Fragment>
     )}
+    {thumbnailSrc && <img class="thumb-image" src={thumbnailSrc} alt="" />}
     {!thumbnail && <div class="thumb-fallback">{title.slice(0, 1)}</div>}
     <div class="card-thumb-label">{thumbLabel}</div>
   </div>
@@ -71,5 +84,12 @@ const LUT_ROW_B = thumbnail === 'lut-strip' ? Array.from({ length: 16 }, (_, i) 
     font-family: var(--font-mono);
     font-size: 2rem;
     color: #333;
+  }
+  .thumb-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 </style>

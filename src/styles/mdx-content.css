@@ -19,6 +19,14 @@
   margin-bottom: 1rem;
   max-width: 680px;
 }
+.mdx-content img {
+  display: block;
+  max-width: 680px;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1.25rem 0;
+}
 .mdx-content strong {
   color: #bbb;
   font-weight: 600;
