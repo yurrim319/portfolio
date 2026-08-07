@@ -18,7 +18,10 @@ const rendered = await Promise.all(
         <h1 class="print-project-title">{entry.data.title}</h1>
         {entry.data.subtitle && <p class="print-project-sub">{entry.data.subtitle}</p>}
       </header>
-      <div class="mdx-content">
+      <div
+        class="mdx-content"
+        style={entry.data.galleryColumnsPrint ? `--gallery-columns-print: ${entry.data.galleryColumnsPrint}` : undefined}
+      >
         <Content />
       </div>
     </article>

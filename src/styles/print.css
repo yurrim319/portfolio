@@ -73,21 +73,9 @@ body {
   text-decoration: underline;
 }
 
-/* 본문 이미지는 인쇄 시 여백을 고려해 2열 모아보기로 배치.
-   width는 고정, height는 auto라 가로형은 짧게 세로형은 길게 — 원본 비율 그대로 들어간다.
-   !important로 mdx-content.css의 1열 전체폭 규칙을 확실히 덮어쓴다.
-   width를 넉넉히 줄여(합쳐서 컨테이너 폭의 82%만 사용) inline-block 사이에 생기는
-   공백(whitespace) 몇 px 때문에 매번 줄바꿈되는 문제를 방지한다. */
-.mdx-content img {
-  display: inline-block !important;
-  width: calc(50% - 20px) !important;
-  height: auto !important;
-  max-width: none !important;
-  margin: 0 8px 12px 0 !important;
-  vertical-align: top;
+/* 갤러리 이미지(mdx-content.css의 N열 그리드 모아보기)는 인쇄용 열 개수를
+   따로 지정할 수 있다(기본 2열, frontmatter galleryColumnsPrint로 프로젝트마다 지정). */
+.mdx-content p:has(img ~ img) {
+  grid-template-columns: repeat(var(--gallery-columns-print, 2), 1fr) !important;
   break-inside: avoid;
-}
-/* 공백 자체도 제거 (이미지만 있는 문단은 텍스트가 없으니 font-size 0으로 없애도 안전) */
-.mdx-content p:has(img) {
-  font-size: 0;
 }

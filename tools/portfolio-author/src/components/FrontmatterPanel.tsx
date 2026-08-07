@@ -166,6 +166,28 @@ export default function FrontmatterPanel({ content, collection, projectSlug, onC
                   </div>
                 ))}
               </div>
+              <div className="fm-row">
+                <label className="fm-field">
+                  <span>갤러리 한 줄당 이미지 수 · 웹</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={(data.galleryColumns as number) ?? ''}
+                    onChange={e => update({ galleryColumns: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="2"
+                  />
+                </label>
+                <label className="fm-field">
+                  <span>갤러리 한 줄당 이미지 수 · PDF</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={(data.galleryColumnsPrint as number) ?? ''}
+                    onChange={e => update({ galleryColumnsPrint: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="2"
+                  />
+                </label>
+              </div>
             </>
           )}
 

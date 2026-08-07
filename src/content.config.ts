@@ -10,6 +10,8 @@ const projects = defineCollection({
     date: z.string().optional(),
     thumbnail: z.string().optional(),
     draft: z.boolean().optional(),
+    galleryColumns: z.number().int().min(1).optional(),
+    galleryColumnsPrint: z.number().int().min(1).optional(),
     chips: z.array(z.object({
       label: z.string(),
       highlight: z.boolean().optional(),

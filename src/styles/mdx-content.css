@@ -28,6 +28,23 @@
   border-radius: 8px;
   margin: 1.25rem 0;
 }
+/* 이미지가 연달아 있는 문단(마크다운에서 빈 줄 없이 이어붙인 ![]() 여러 줄은
+   하나의 <p> 안에 <img>가 나란히 들어간다)은 고정 N열 그리드로 모아보기 배치한다.
+   열 개수(--gallery-columns)는 frontmatter의 galleryColumns로 프로젝트마다 지정 가능.
+   각 이미지는 자기 칸 폭에 맞춰 height:auto로 원본 비율 그대로 — 크롭 없음. */
+.mdx-content p:has(img ~ img) {
+  display: grid;
+  grid-template-columns: repeat(var(--gallery-columns, 2), 1fr);
+  align-items: start;
+  gap: 8px;
+  margin: 1.25rem 0;
+}
+.mdx-content p:has(img ~ img) img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+}
 .mdx-content strong {
   color: var(--color-text);
   font-weight: 700;

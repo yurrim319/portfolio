@@ -6,7 +6,8 @@ import '../styles/mdx-content.css';
 
 interface Props { entry: Project }
 const { entry } = Astro.props;
-const { title, subtitle, type, date, chips } = entry.data;
+const { title, subtitle, type, date, chips, galleryColumns } = entry.data;
+const mdxContentStyle = galleryColumns ? `--gallery-columns: ${galleryColumns}` : undefined;
 ---
 <SiteLayout title={`${title} — yurim · dev`}>
   <a class="back-link" href={base}>← projects</a>
@@ -27,7 +28,7 @@ const { title, subtitle, type, date, chips } = entry.data;
     )}
   </header>
 
-  <div class="mdx-content">
+  <div class="mdx-content" style={mdxContentStyle}>
     <slot />
   </div>
 
