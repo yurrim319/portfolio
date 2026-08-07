@@ -1,11 +1,12 @@
 /* MDX 렌더링된 콘텐츠 공통 스타일 — ProjectLayout, print 페이지에서 공유 */
+/* 페이지 배경이 밝은색(theme.css --color-bg)이므로 본문 색상도 그 위에서 읽히는 톤으로 통일한다 */
 .mdx-content h2 {
   font-size: 1.15rem;
-  color: #ccc;
+  color: var(--color-text);
   font-weight: 600;
   margin: 3rem 0 0.75rem;
   padding-top: 2.5rem;
-  border-top: 1px solid #1a1a1a;
+  border-top: 1px solid var(--color-border);
 }
 .mdx-content h2:first-child {
   border-top: none;
@@ -14,7 +15,7 @@
 }
 .mdx-content p {
   font-size: 0.92rem;
-  color: #888;
+  color: #444;
   line-height: 1.85;
   margin-bottom: 1rem;
   max-width: 680px;
@@ -28,12 +29,12 @@
   margin: 1.25rem 0;
 }
 .mdx-content strong {
-  color: #bbb;
-  font-weight: 600;
+  color: var(--color-text);
+  font-weight: 700;
 }
 .mdx-content hr {
   border: none;
-  border-top: 1px solid #1a1a1a;
+  border-top: 1px solid var(--color-border);
   margin: 3rem 0;
 }
 /* 코드 블록 */
@@ -72,16 +73,16 @@
 .mdx-content th {
   text-align: left;
   padding: 0.6rem 0.9rem;
-  color: #666;
-  font-weight: 500;
-  border-bottom: 1px solid #222;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
   font-family: var(--font-mono);
   font-size: 0.78rem;
 }
 .mdx-content td {
   padding: 0.6rem 0.9rem;
-  color: #888;
-  border-bottom: 1px solid #1a1a1a;
+  color: #444;
+  border-bottom: 1px solid var(--color-border);
 }
 .mdx-content tr:last-child td {
   border-bottom: none;
@@ -93,7 +94,7 @@
 }
 .mdx-content li {
   font-size: 0.88rem;
-  color: #888;
+  color: #444;
   line-height: 1.8;
   margin-bottom: 0.25rem;
 }
