@@ -80,6 +80,12 @@ nav {
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
   border-radius: 3px;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.stack-item:hover {
+  border-color: var(--color-accent-border);
+  color: var(--color-accent);
 }
 .stack-item.hi {
   border-color: var(--color-accent-border);
@@ -106,6 +112,29 @@ nav {
   font-size: 0.68rem;
   color: #ddd;
 }
+.category-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+.category-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--color-text-faint);
+  margin-right: 0.2rem;
+}
+.category-item {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.2rem 0.55rem;
+  background: #f5f5f5;
+  color: var(--color-text-muted);
+  border-radius: 3px;
+  text-decoration: none;
+}
+.category-item:hover { color: var(--color-accent); background: var(--color-accent-bg); }
 
 /* card */
 .card {
@@ -283,6 +312,7 @@ nav {
   margin-bottom: 1.5rem;
   max-width: 600px;
 }
+.article-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 
 /* ─── section ────────────────────────────── */
 .section {

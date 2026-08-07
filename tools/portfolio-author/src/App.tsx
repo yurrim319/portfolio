@@ -3,6 +3,7 @@ import FileExplorer from './components/FileExplorer';
 import MarkdownEditor from './components/MarkdownEditor';
 import { createFile, deleteFile, listFiles, readFile, writeFile } from './api';
 import type { Collection, ContentFile } from './types';
+import '../../../src/styles/theme.css';
 import './style.css';
 
 const NAME_RE = /^[a-zA-Z0-9._-]+\.(md|mdx)$/;

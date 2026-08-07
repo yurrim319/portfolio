@@ -24,6 +24,7 @@ const SNIPPETS: { key: string; label: string; text: string }[] = [
   { key: 'divider', label: '구분선 (---)', text: '\n---\n\n' },
   { key: 'code', label: '코드 블록', text: '\n```\n\n```\n\n' },
   { key: 'table', label: '표', text: '\n| 항목 | 설명 |\n| --- | --- |\n| 값1 | 설명1 |\n\n' },
+  { key: 'caption', label: '설명 캡션(작은 글씨)', text: '\n<small>설명을 입력하세요</small>\n\n' },
 ];
 
 function formatTime(date: Date): string {
@@ -126,7 +127,7 @@ export default function MarkdownEditor({ file, content, dirty, saving, savedAt, 
           value={content}
           height="100%"
           className="editor-cm"
-          theme="dark"
+          theme="light"
           extensions={[markdown()]}
           onChange={onChange}
           onCreateEditor={view => { viewRef.current = view; }}

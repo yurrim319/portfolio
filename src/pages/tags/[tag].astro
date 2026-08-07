@@ -1,0 +1,24 @@
+---
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { getAllTags, getProjectsByTagSlug } from '../../lib/taxonomy';
+import { BASE as base } from '../../lib/site';
+
+export async function getStaticPaths() {
+  const tags = await getAllTags();
+  return tags.map(tag => ({ params: { tag: tag.slug } }));
+}
+
+const { tag } = Astro.params;
+const { label, projects } = await getProjectsByTagSlug(tag!);
+---
+<SiteLayout title={`${label} — yurim · dev`}>
+  <a class="back-link" href={base}>← projects</a>
+  <div class="works">
+    <div class="works-header">
+      <div class="works-title">// tag: {label}</div>
+      <div class="works-count">{String(projects.length).padStart(2, '0')} / --</div>
+    </div>
+    {projects.map(entry => <ProjectCard entry={entry} />)}
+  </div>
+</SiteLayout>

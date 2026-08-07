@@ -2,8 +2,12 @@
 import SiteLayout from '../layouts/SiteLayout.astro';
 import ProjectCard from '../components/ProjectCard.astro';
 import { getSortedProjects } from '../lib/projects';
+import { getAllTags, getAllTypes } from '../lib/taxonomy';
+import { BASE as base } from '../lib/site';
 
 const projects = await getSortedProjects();
+const tags = await getAllTags();
+const types = await getAllTypes();
 ---
 <SiteLayout title="yurim · dev">
   <div class="hero">
@@ -15,12 +19,11 @@ const projects = await getSortedProjects();
       엔진 소스 레벨의 RDG 파이프라인부터 커스텀 HLSL 셰이더까지.
     </div>
     <div class="stack">
-      <span class="stack-item hi">UE5.3</span>
-      <span class="stack-item hi">RDG</span>
-      <span class="stack-item hi">HLSL</span>
-      <span class="stack-item">Post Process</span>
-      <span class="stack-item">Compute Shader</span>
-      <span class="stack-item">GBuffer</span>
+      {tags.map(tag => (
+        <a class={`stack-item${tag.highlight ? ' hi' : ''}`} href={`${base}tags/${tag.slug}`}>
+          {tag.label}
+        </a>
+      ))}
     </div>
   </div>
 
@@ -29,6 +32,14 @@ const projects = await getSortedProjects();
       <div class="works-title">// works</div>
       <div class="works-count">{String(projects.length).padStart(2, '0')} / --</div>
     </div>
+    {types.length > 0 && (
+      <div class="category-row">
+        <span class="category-label">category:</span>
+        {types.map(type => (
+          <a class="category-item" href={`${base}types/${type.slug}`}>{type.label}</a>
+        ))}
+      </div>
+    )}
     {projects.map(entry => <ProjectCard entry={entry} />)}
   </div>
 </SiteLayout>
